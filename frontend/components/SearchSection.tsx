@@ -1,0 +1,483 @@
+import React, { useState, useEffect } from 'react';
+import { SearchResult, MediaItem } from '../app/types';
+import { searchMedia, addItem, getItems } from '../app/api';
+
+interface SearchSectionProps {
+  onItemAdded: () => void;
+}
+
+export default function SearchSection({ onItemAdded }: SearchSectionProps) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [libraryItems, setLibraryItems] = useState<MediaItem[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [blurTimeout, setBlurTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Track which items are showing rating selectors
+  const [activeRatingSelector, setActiveRatingSelector] = useState<number | null>(null);
+  // Track adding state to display button spinners
+  const [addingId, setAddingId] = useState<string | null>(null); // e.g. "tmdbId-category"
+
+  // Fetch current library to check if items are already present
+  const fetchLibrary = async () => {
+    const items = await getItems();
+    setLibraryItems(items);
+  };
+
+  useEffect(() => {
+    fetchLibrary();
+  }, []);
+
+  // Debounce logic for pre-search autocomplete suggestions
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (query.trim().length >= 2) {
+        const searchResults = await searchMedia(query);
+        setSuggestions(searchResults.slice(0, 5));
+      } else {
+        setSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    
+    setLoading(true);
+    setShowSuggestions(false);
+    // Refresh library state to make sure comparison is accurate
+    await fetchLibrary();
+    const searchResults = await searchMedia(query);
+    setResults(searchResults);
+    setLoading(false);
+  };
+
+  const handleSuggestionClick = async (searchTitle: string) => {
+    setQuery(searchTitle);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    
+    setLoading(true);
+    await fetchLibrary();
+    const searchResults = await searchMedia(searchTitle);
+    setResults(searchResults);
+    setLoading(false);
+  };
+
+  // Find if a search result is already in the database
+  const getLibraryStatus = (tmdbId: number, mediaType: 'movie' | 'tv') => {
+    return libraryItems.find(item => item.tmdb_id === tmdbId && item.media_type === mediaType);
+  };
+
+  const handleAdd = async (
+    tmdbId: number, 
+    mediaType: 'movie' | 'tv', 
+    category: 'watched' | 'watching' | 'dvd_owned' | 'dvd_wishlist',
+    rating?: number
+  ) => {
+    const addStateKey = `${tmdbId}-${category}`;
+    setAddingId(addStateKey);
+    
+    const newItem = await addItem(tmdbId, mediaType, category, rating);
+    
+    if (newItem) {
+      // Refresh local library cache
+      await fetchLibrary();
+      onItemAdded();
+      setActiveRatingSelector(null);
+    }
+    setAddingId(null);
+  };
+
+  const handleBlur = () => {
+    const timeout = setTimeout(() => {
+      setShowSuggestions(false);
+    }, 250);
+    setBlurTimeout(timeout);
+  };
+
+  const handleFocus = () => {
+    if (blurTimeout) clearTimeout(blurTimeout);
+    if (suggestions.length > 0) setShowSuggestions(true);
+  };
+
+  return (
+    <div className="animate-fade-in" style={{ padding: '1rem 0' }}>
+      {/* Search Input Box */}
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', maxWidth: '600px', margin: '0 auto 2.5rem', position: 'relative' }}>
+        <div style={{ position: 'relative', flexGrow: 1 }}>
+          <input 
+            type="text" 
+            placeholder="Rechercher un film ou une série (ex: Inception, Breaking Bad...)" 
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            className="form-input"
+            style={{ width: '100%' }}
+          />
+          {showSuggestions && suggestions.length > 0 && (
+            <div 
+              className="glass-panel"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                width: '100%',
+                background: 'rgba(15, 12, 25, 0.98)',
+                border: '1px solid var(--card-border)',
+                borderRadius: '10px',
+                marginTop: '6px',
+                zIndex: 1000,
+                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                maxHeight: '320px',
+                overflowY: 'auto',
+                padding: '0.4rem 0'
+              }}
+            >
+              {suggestions.map((item) => (
+                <div
+                  key={`${item.media_type}-${item.tmdb_id}`}
+                  onClick={() => handleSuggestionClick(item.title)}
+                  style={{
+                    padding: '0.6rem 1rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    transition: 'background 0.2s'
+                  }}
+                  className="suggestion-item"
+                >
+                  <span style={{ fontSize: '1.25rem' }}>
+                    {item.media_type === 'movie' ? '🎬' : '📺'}
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#fff', fontWeight: 600 }}>{item.title}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {item.media_type === 'movie' ? 'Film' : 'Série'} {item.release_date ? `(${new Date(item.release_date).getFullYear()})` : ''}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ flexShrink: 0 }}>
+          {loading ? 'Recherche...' : '🔍 Chercher'}
+        </button>
+      </form>
+
+      {/* Loading indicator */}
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '3rem 0' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid rgba(255, 255, 255, 0.1)',
+            borderTopColor: 'var(--primary)',
+            borderRadius: '50%',
+            animation: 'pulseGlow 1.2s infinite ease-in-out',
+            display: 'inline-block'
+          }}></div>
+        </div>
+      )}
+
+      {/* No results notice */}
+      {!loading && query && results.length === 0 && (
+        <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '500px', margin: '0 auto' }}>
+          <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Aucun résultat trouvé 🎬</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            Essayez de vérifier l'orthographe ou configurez votre clé API TMDB dans le fichier `.env` du backend.
+          </p>
+        </div>
+      )}
+
+      {/* Results grid */}
+      {!loading && results.length > 0 && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '24px'
+        }}>
+          {results.map((media) => {
+            const libraryItem = getLibraryStatus(media.tmdb_id, media.media_type);
+            const releaseYear = media.release_date ? new Date(media.release_date).getFullYear() : 'N/A';
+            const posterUrl = media.poster_path 
+              ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+              : null;
+            const isRatingOpen = activeRatingSelector === media.tmdb_id;
+
+            return (
+              <div 
+                key={`${media.media_type}-${media.tmdb_id}`}
+                className="glass-panel"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  minHeight: '380px',
+                  border: libraryItem ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid var(--card-border)'
+                }}
+              >
+                {/* Poster container */}
+                <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#100e17', minHeight: '260px' }}>
+                  {posterUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img 
+                      src={posterUrl} 
+                      alt={media.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      padding: '2rem',
+                      textAlign: 'center',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <span style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎬</span>
+                      <span style={{ fontWeight: 600 }}>Pas d'affiche</span>
+                    </div>
+                  )}
+
+                  {/* Media Type Badge */}
+                  <span style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    background: media.media_type === 'movie' ? 'rgba(139, 92, 246, 0.9)' : 'rgba(236, 72, 153, 0.9)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#fff',
+                    zIndex: 2
+                  }}>
+                    {media.media_type === 'movie' ? 'Film' : 'Série'}
+                  </span>
+
+                  {/* Rating Selector */}
+                  {isRatingOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      background: 'rgba(15, 12, 25, 0.96)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1rem',
+                      zIndex: 3
+                    }}>
+                      <span style={{ fontSize: '1.1rem', marginBottom: '0.75rem', fontWeight: 600 }}>Noter (1 - 10)</span>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: '6px',
+                        width: '100%',
+                        maxWidth: '200px'
+                      }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                          <button
+                            key={num}
+                            onClick={() => handleAdd(media.tmdb_id, media.media_type, 'watched', num)}
+                            disabled={addingId !== null}
+                            style={{
+                              padding: '0.4rem',
+                              borderRadius: '6px',
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#fff',
+                              fontWeight: 'bold',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => setActiveRatingSelector(null)}
+                        style={{
+                          marginTop: '1rem',
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info block */}
+                <div style={{ padding: '1rem', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexGrow: 1 }} title={media.title}>
+                      {media.title}
+                    </h3>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      {releaseYear}
+                    </span>
+                  </div>
+
+                  {/* Status badges in library */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '0.5rem 0', minHeight: '22px' }}>
+                    {libraryItem ? (
+                      <>
+                        {libraryItem.watched && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--rating-color)', fontWeight: 600 }}>
+                            ★ {libraryItem.rating}/10 (Vu)
+                          </span>
+                        )}
+                        {libraryItem.watching && (
+                          <span style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 600 }}>
+                            📺 En cours (S{libraryItem.current_season}{libraryItem.total_seasons ? `/${libraryItem.total_seasons}` : ''} E{libraryItem.current_episode}{(() => {
+                              const sData = libraryItem.seasons_data?.find(s => s.season_number === libraryItem.current_season);
+                              const maxEp = sData ? sData.episode_count : libraryItem.total_episodes;
+                              return maxEp ? `/${maxEp}` : '';
+                            })()})
+                          </span>
+                        )}
+                        {libraryItem.dvd_owned && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--dvd-color)', fontWeight: 600 }}>
+                            📀 DVD
+                          </span>
+                        )}
+                        {libraryItem.dvd_wishlist && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--wishlist-color)', fontWeight: 600 }}>
+                            💖 Souhait DVD
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Non présent sur votre étagère</span>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    paddingTop: '0.75rem',
+                    marginTop: '0.25rem'
+                  }}>
+                    {/* TV Show Progress Tracker Button */}
+                    {media.media_type === 'tv' && (
+                      <button
+                        onClick={() => handleAdd(media.tmdb_id, media.media_type, 'watching')}
+                        disabled={addingId !== null || libraryItem?.watching}
+                        className="btn"
+                        style={{
+                          padding: '0.45rem',
+                          fontSize: '0.8rem',
+                          background: libraryItem?.watching ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          color: libraryItem?.watching ? '#60a5fa' : '#fff',
+                          border: libraryItem?.watching ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          justifyContent: 'flex-start',
+                          cursor: libraryItem?.watching ? 'default' : 'pointer'
+                        }}
+                      >
+                        {addingId === `${media.tmdb_id}-watching` 
+                          ? 'Ajout...' 
+                          : libraryItem?.watching 
+                            ? '✓ En cours de visionnage' 
+                            : '📺 Suivre la série'}
+                      </button>
+                    )}
+
+                    {/* Add to Watched Button */}
+                    <button
+                      onClick={() => setActiveRatingSelector(media.tmdb_id)}
+                      disabled={addingId !== null || libraryItem?.watched}
+                      className="btn"
+                      style={{
+                        padding: '0.45rem',
+                        fontSize: '0.8rem',
+                        background: libraryItem?.watched ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: libraryItem?.watched ? 'var(--primary)' : '#fff',
+                        border: libraryItem?.watched ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'flex-start',
+                        cursor: libraryItem?.watched ? 'default' : 'pointer'
+                      }}
+                    >
+                      {libraryItem?.watched ? '✓ Déjà vu' : '👁️ Marquer comme vu'}
+                    </button>
+
+                    {/* Add to DVD Owned Button */}
+                    <button
+                      onClick={() => handleAdd(media.tmdb_id, media.media_type, 'dvd_owned')}
+                      disabled={addingId !== null || libraryItem?.dvd_owned}
+                      className="btn"
+                      style={{
+                        padding: '0.45rem',
+                        fontSize: '0.8rem',
+                        background: libraryItem?.dvd_owned ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: libraryItem?.dvd_owned ? 'var(--dvd-color)' : '#fff',
+                        border: libraryItem?.dvd_owned ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'flex-start',
+                        cursor: libraryItem?.dvd_owned ? 'default' : 'pointer'
+                      }}
+                    >
+                      {addingId === `${media.tmdb_id}-dvd_owned` 
+                        ? 'Ajout...' 
+                        : libraryItem?.dvd_owned 
+                          ? '✓ DVD Possédé' 
+                          : '📀 Ajouter aux DVD achetés'}
+                    </button>
+
+                    {/* Add to DVD Wishlist Button */}
+                    <button
+                      onClick={() => handleAdd(media.tmdb_id, media.media_type, 'dvd_wishlist')}
+                      disabled={addingId !== null || libraryItem?.dvd_wishlist}
+                      className="btn"
+                      style={{
+                        padding: '0.45rem',
+                        fontSize: '0.8rem',
+                        background: libraryItem?.dvd_wishlist ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: libraryItem?.dvd_wishlist ? 'var(--wishlist-color)' : '#fff',
+                        border: libraryItem?.dvd_wishlist ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'flex-start',
+                        cursor: libraryItem?.dvd_wishlist ? 'default' : 'pointer'
+                      }}
+                    >
+                      {addingId === `${media.tmdb_id}-dvd_wishlist` 
+                        ? 'Ajout...' 
+                        : libraryItem?.dvd_wishlist 
+                          ? '✓ Dans la liste de souhaits' 
+                          : '💖 Ajouter aux souhaits DVD'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
