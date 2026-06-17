@@ -19,6 +19,8 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
   const [activeRatingSelector, setActiveRatingSelector] = useState<number | null>(null);
   // Track adding state to display button spinners
   const [addingId, setAddingId] = useState<string | null>(null); // e.g. "tmdbId-category"
+  // Track which item is hovered for the preview/synopsis overlay
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Fetch current library to check if items are already present
   const fetchLibrary = async () => {
@@ -214,10 +216,18 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
               : null;
             const isRatingOpen = activeRatingSelector === media.tmdb_id;
 
+            const idKey = `${media.media_type}-${media.tmdb_id}`;
+            const isHovered = hoveredId === idKey;
+
             return (
               <div 
-                key={`${media.media_type}-${media.tmdb_id}`}
+                key={idKey}
                 className="glass-panel"
+                onMouseEnter={() => setHoveredId(idKey)}
+                onMouseLeave={() => {
+                  setHoveredId(null);
+                  setActiveRatingSelector(null);
+                }}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -228,13 +238,19 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                 }}
               >
                 {/* Poster container */}
-                <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#100e17', minHeight: '260px' }}>
+                <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#100e17', minHeight: '260px', overflow: 'hidden' }}>
                   {posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={posterUrl} 
                       alt={media.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover',
+                        transition: 'transform 0.5s ease',
+                        transform: isHovered ? 'scale(1.06)' : 'scale(1)'
+                      }}
                     />
                   ) : (
                     <div style={{
@@ -252,6 +268,39 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                       <span style={{ fontWeight: 600 }}>Pas d'affiche</span>
                     </div>
                   )}
+
+                  {/* Hover Overview Overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'rgba(9, 9, 14, 0.92)',
+                    padding: '1.25rem',
+                    opacity: isHovered && !isRatingOpen ? 1 : 0,
+                    visibility: isHovered && !isRatingOpen ? 'visible' : 'hidden',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    zIndex: 3,
+                    overflowY: 'auto'
+                  }}>
+                    <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#fff', textAlign: 'left' }}>Synopsis</h4>
+                    <p style={{ 
+                      fontSize: '0.85rem', 
+                      color: 'var(--text-secondary)', 
+                      lineHeight: 1.5,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 10,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textAlign: 'left'
+                    }}>
+                      {media.overview || "Aucun synopsis disponible."}
+                    </p>
+                  </div>
 
                   {/* Media Type Badge */}
                   <span style={{
