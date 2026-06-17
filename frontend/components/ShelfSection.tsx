@@ -10,7 +10,7 @@ interface ShelfSectionProps {
 }
 
 export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: ShelfSectionProps) {
-  // 1. Calculate general stats across ALL items in the library
+  // 1. Calculer les statistiques générales pour toute la bibliothèque
   const totalCount = items.length;
   const watchingCount = items.filter(i => i.watching).length;
   const watchedItems = items.filter(i => i.watched);
@@ -22,21 +22,21 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
     ? (watchedItems.reduce((acc, i) => acc + (i.rating || 0), 0) / watchedCount).toFixed(1)
     : 'N/A';
 
-  // 2. Local states for search, media type filter, and sorting
+  // 2. États locaux pour la recherche interne, le filtre de type et le tri
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [sortBy, setSortBy] = useState<string>('date_desc');
 
-  // Filter items for the active shelf view
+  // Filtrer les éléments selon l'onglet actif
   let filteredItems = items.filter(item => {
     if (activeTab === 'watching') return item.watching;
     if (activeTab === 'watched') return item.watched;
     if (activeTab === 'dvd_owned') return item.dvd_owned;
     if (activeTab === 'dvd_wishlist') return item.dvd_wishlist;
-    return true; // 'all'
+    return true; // toutes les catégories
   });
 
-  // Apply search query filter
+  // Appliquer le filtre de recherche par titre ou synopsis
   if (searchQuery.trim()) {
     const q = searchQuery.toLowerCase();
     filteredItems = filteredItems.filter(item => 
@@ -45,12 +45,12 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
     );
   }
 
-  // Apply media type filter
+  // Appliquer le filtre de type de média (film vs série)
   if (typeFilter !== 'all') {
     filteredItems = filteredItems.filter(item => item.media_type === typeFilter);
   }
 
-  // Apply sorting
+  // Appliquer le tri configuré
   filteredItems.sort((a, b) => {
     if (sortBy === 'date_desc') {
       return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
@@ -91,80 +91,135 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* Stats Dashboard */}
+      {/* Tableau de bord des statistiques avec un style néon épuré */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '16px',
         width: '100%'
       }}>
-        {/* Stat 1: Total Titles */}
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>🎬</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Titres</span>
-          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.25rem' }}>{totalCount}</span>
+        {/* Stat 1: Total Bibliothèque */}
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          borderBottom: '3px solid rgba(255, 255, 255, 0.3)',
+        }}>
+          <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📚</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Titres</span>
+          <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#fff', marginTop: '0.25rem' }}>{totalCount}</span>
         </div>
 
-        {/* Stat 1.5: Watching */}
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        {/* Stat 2: Séries en cours */}
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          borderBottom: '3px solid #3b82f6',
+          boxShadow: '0 8px 25px rgba(59, 130, 246, 0.05)'
+        }}>
           <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📺</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>En cours</span>
-          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#60a5fa', marginTop: '0.25rem' }}>{watchingCount}</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>En cours</span>
+          <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#60a5fa', marginTop: '0.25rem' }}>{watchingCount}</span>
         </div>
 
-        {/* Stat 2: Watched & Rating */}
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        {/* Stat 3: Titres Vus */}
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          borderBottom: '3px solid var(--primary)',
+          boxShadow: '0 8px 25px rgba(139, 92, 246, 0.05)'
+        }}>
           <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>👁️</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vus & Notés</span>
-          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-hover)', marginTop: '0.25rem' }}>
-            {watchedCount} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)' }}>({averageRating} ★)</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vus & Notés</span>
+          <span style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--primary-hover)', marginTop: '0.25rem' }}>
+            {watchedCount} <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-secondary)', marginLeft: '2px' }}>({averageRating} ★)</span>
           </span>
         </div>
 
-        {/* Stat 3: DVD Owned */}
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        {/* Stat 4: DVD Achetés */}
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          borderBottom: '3px solid var(--dvd-color)',
+          boxShadow: '0 8px 25px rgba(6, 182, 212, 0.05)'
+        }}>
           <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📀</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DVD Possédés</span>
-          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--dvd-color)', marginTop: '0.25rem' }}>{dvdOwnedCount}</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>DVD Possédés</span>
+          <span style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--dvd-color)', marginTop: '0.25rem' }}>{dvdOwnedCount}</span>
         </div>
 
-        {/* Stat 4: DVD Wishlist */}
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        {/* Stat 5: DVD Souhaités */}
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          borderBottom: '3px solid var(--wishlist-color)',
+          boxShadow: '0 8px 25px rgba(236, 72, 153, 0.05)'
+        }}>
           <span style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>💖</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Souhaits DVD</span>
-          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--wishlist-color)', marginTop: '0.25rem' }}>{dvdWishlistCount}</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Souhaités</span>
+          <span style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--wishlist-color)', marginTop: '0.25rem' }}>{dvdWishlistCount}</span>
         </div>
       </div>
 
-      {/* Media Items Section */}
+      {/* Section des éléments de la bibliothèque */}
       <div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h2 style={{ 
+          fontSize: '1.35rem', 
+          fontWeight: 800, 
+          color: '#fff', 
+          marginBottom: '1.5rem', 
+          borderBottom: '1px solid rgba(255,255,255,0.06)', 
+          paddingBottom: '0.6rem', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '10px' 
+        }}>
           {activeTab === 'all' && '📚 Toute ma bibliothèque'}
           {activeTab === 'watching' && '📺 Mes séries en cours'}
           {activeTab === 'watched' && '👁️ Mes films & séries vus'}
           {activeTab === 'dvd_owned' && '📀 Mes DVD achetés'}
           {activeTab === 'dvd_wishlist' && '💖 Mes souhaits d\'achats DVD'}
-          <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-            ({filteredItems.length})
+          <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '20px' }}>
+            {filteredItems.length}
           </span>
         </h2>
 
-        {/* Controls and Search Bar */}
+        {/* Barre de contrôle et de filtrage unifiée en verre dépoli */}
         <div style={{
           display: 'flex',
-          gap: '15px',
+          gap: '16px',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          marginBottom: '1.5rem',
-          background: 'rgba(255, 255, 255, 0.02)',
+          marginBottom: '2rem',
+          background: 'rgba(20, 18, 30, 0.4)',
           border: '1px solid var(--card-border)',
-          borderRadius: '12px',
-          padding: '0.75rem 1rem'
+          borderRadius: '16px',
+          padding: '0.85rem 1.25rem',
+          backdropFilter: 'var(--glass-blur)'
         }}>
-          {/* Internal search input */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '240px', flexGrow: 1 }}>
-            <span style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>🔍</span>
+          {/* Recherche interne */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '260px', flexGrow: 1 }}>
+            <span style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)', pointerEvents: 'none', fontSize: '0.9rem' }}>🔍</span>
             <input
               type="text"
               placeholder="Rechercher sur mes étagères..."
@@ -172,9 +227,9 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-input"
               style={{
-                paddingLeft: '32px',
+                paddingLeft: '36px',
                 fontSize: '0.9rem',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 background: 'rgba(255,255,255,0.02)'
               }}
             />
@@ -188,7 +243,7 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
                   border: 'none',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  fontSize: '0.85rem'
+                  fontSize: '0.95rem'
                 }}
               >
                 ✕
@@ -196,24 +251,31 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
             )}
           </div>
 
-          {/* Filters buttons */}
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Media type filters */}
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* Filtres secondaires et Tri */}
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            
+            {/* Filtre par Type de média */}
+            <div style={{ 
+              display: 'flex', 
+              background: 'rgba(255,255,255,0.03)', 
+              borderRadius: '10px', 
+              padding: '3px', 
+              border: '1px solid rgba(255,255,255,0.06)' 
+            }}>
               {(['all', 'movie', 'tv'] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setTypeFilter(type)}
                   style={{
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '6px',
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     background: typeFilter === type ? 'var(--primary)' : 'transparent',
-                    color: '#fff',
-                    transition: 'all 0.2s'
+                    color: typeFilter === type ? '#fff' : 'var(--text-secondary)',
+                    transition: 'all 0.25s ease'
                   }}
                 >
                   {type === 'all' && 'Tous'}
@@ -223,22 +285,24 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
               ))}
             </div>
 
-            {/* Sorting select */}
+            {/* Tri */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Trier par :</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Trier par :</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 style={{
-                  background: 'rgba(15, 12, 25, 0.9)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: '8px',
+                  background: 'rgba(12, 10, 18, 0.95)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
                   color: '#fff',
-                  padding: '0.45rem 1.5rem 0.45rem 0.75rem',
+                  padding: '0.45rem 1.75rem 0.45rem 0.75rem',
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  outline: 'none'
+                  outline: 'none',
+                  fontFamily: 'var(--font-outfit)',
+                  transition: 'var(--transition-smooth)'
                 }}
               >
                 <option value="date_desc">Ajoutés (Récents)</option>
@@ -252,10 +316,11 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete }: S
           </div>
         </div>
 
+        {/* Grille de cartes ou message d'étagère vide */}
         {filteredItems.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Étagère vide</p>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
+          <div className="glass-panel animate-fade-in" style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <p style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Étagère vide 🎬</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
               {getEmptyMessage()}
             </p>
           </div>

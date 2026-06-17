@@ -15,14 +15,14 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [blurTimeout, setBlurTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  // Track which items are showing rating selectors
+  // Suivi des éléments affichant les sélecteurs de note
   const [activeRatingSelector, setActiveRatingSelector] = useState<number | null>(null);
-  // Track adding state to display button spinners
-  const [addingId, setAddingId] = useState<string | null>(null); // e.g. "tmdbId-category"
-  // Track which item is hovered for the preview/synopsis overlay
+  // Suivi de l'état d'ajout pour afficher les indicateurs de chargement sur les boutons
+  const [addingId, setAddingId] = useState<string | null>(null); // ex: "tmdbId-category"
+  // Suivi de l'élément survolé pour l'affichage du synopsis en superposition
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Fetch current library to check if items are already present
+  // Récupérer la bibliothèque actuelle pour vérifier si les éléments sont déjà présents
   const fetchLibrary = async () => {
     const items = await getItems();
     setLibraryItems(items);
@@ -32,7 +32,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
     fetchLibrary();
   }, []);
 
-  // Debounce logic for pre-search autocomplete suggestions
+  // Logique d'autocomplétion (debounce) lors de la frappe
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (query.trim().length >= 2) {
@@ -52,7 +52,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
     
     setLoading(true);
     setShowSuggestions(false);
-    // Refresh library state to make sure comparison is accurate
+    // Rafraîchir la bibliothèque pour que les statuts "déjà possédé" soient exacts
     await fetchLibrary();
     const searchResults = await searchMedia(query);
     setResults(searchResults);
@@ -71,7 +71,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
     setLoading(false);
   };
 
-  // Find if a search result is already in the database
+  // Déterminer si un média de la recherche est déjà présent dans la bibliothèque
   const getLibraryStatus = (tmdbId: number, mediaType: 'movie' | 'tv') => {
     return libraryItems.find(item => item.tmdb_id === tmdbId && item.media_type === mediaType);
   };
@@ -88,7 +88,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
     const newItem = await addItem(tmdbId, mediaType, category, rating);
     
     if (newItem) {
-      // Refresh local library cache
+      // Rafraîchir le cache de la bibliothèque locale
       await fetchLibrary();
       onItemAdded();
       setActiveRatingSelector(null);
@@ -110,7 +110,8 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
 
   return (
     <div className="animate-fade-in" style={{ padding: '1rem 0' }}>
-      {/* Search Input Box */}
+      
+      {/* Barre de saisie de recherche */}
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', maxWidth: '600px', margin: '0 auto 2.5rem', position: 'relative' }}>
         <div style={{ position: 'relative', flexGrow: 1 }}>
           <input 
@@ -133,10 +134,10 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                 width: '100%',
                 background: 'rgba(15, 12, 25, 0.98)',
                 border: '1px solid var(--card-border)',
-                borderRadius: '10px',
+                borderRadius: '12px',
                 marginTop: '6px',
                 zIndex: 1000,
-                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
                 maxHeight: '320px',
                 overflowY: 'auto',
                 padding: '0.4rem 0'
@@ -176,7 +177,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
         </button>
       </form>
 
-      {/* Loading indicator */}
+      {/* Indicateur de chargement */}
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', margin: '3rem 0' }}>
           <div style={{
@@ -185,23 +186,23 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
             border: '4px solid rgba(255, 255, 255, 0.1)',
             borderTopColor: 'var(--primary)',
             borderRadius: '50%',
-            animation: 'pulseGlow 1.2s infinite ease-in-out',
+            animation: 'spin 1s linear infinite',
             display: 'inline-block'
           }}></div>
         </div>
       )}
 
-      {/* No results notice */}
+      {/* Message en cas de recherche infructueuse */}
       {!loading && query && results.length === 0 && (
         <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '500px', margin: '0 auto' }}>
-          <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Aucun résultat trouvé 🎬</p>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Aucun résultat trouvé 🎬</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Essayez de vérifier l'orthographe ou configurez votre clé API TMDB dans le fichier `.env` du backend.
           </p>
         </div>
       )}
 
-      {/* Results grid */}
+      {/* Grille d'affichage des résultats de recherche */}
       {!loading && results.length > 0 && (
         <div style={{
           display: 'grid',
@@ -219,10 +220,19 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
             const idKey = `${media.media_type}-${media.tmdb_id}`;
             const isHovered = hoveredId === idKey;
 
+            // Déterminer la classe de statut si déjà présent dans la bibliothèque
+            let statusClass = '';
+            if (libraryItem) {
+              if (libraryItem.watching) statusClass = 'card-watching';
+              else if (libraryItem.watched) statusClass = 'card-watched';
+              else if (libraryItem.dvd_owned) statusClass = 'card-dvd_owned';
+              else if (libraryItem.dvd_wishlist) statusClass = 'card-dvd_wishlist';
+            }
+
             return (
               <div 
                 key={idKey}
-                className="glass-panel"
+                className={`glass-panel ${statusClass}`}
                 onMouseEnter={() => setHoveredId(idKey)}
                 onMouseLeave={() => {
                   setHoveredId(null);
@@ -233,12 +243,11 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                   flexDirection: 'column',
                   overflow: 'hidden',
                   position: 'relative',
-                  minHeight: '380px',
-                  border: libraryItem ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid var(--card-border)'
+                  minHeight: '380px'
                 }}
               >
-                {/* Poster container */}
-                <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#100e17', minHeight: '260px', overflow: 'hidden' }}>
+                {/* Conteneur de l'affiche */}
+                <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#0f0e15', minHeight: '260px', overflow: 'hidden' }}>
                   {posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img 
@@ -269,7 +278,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     </div>
                   )}
 
-                  {/* Hover Overview Overlay */}
+                  {/* Volet de Synopsis au survol */}
                   <div style={{
                     position: 'absolute',
                     top: 0,
@@ -302,7 +311,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     </p>
                   </div>
 
-                  {/* Media Type Badge */}
+                  {/* Badge du Type de média */}
                   <span style={{
                     position: 'absolute',
                     top: '12px',
@@ -320,7 +329,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     {media.media_type === 'movie' ? 'Film' : 'Série'}
                   </span>
 
-                  {/* Rating Selector */}
+                  {/* Sélecteur de Note (Overlay) */}
                   {isRatingOpen && (
                     <div style={{
                       position: 'absolute',
@@ -334,7 +343,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                       alignItems: 'center',
                       justifyContent: 'center',
                       padding: '1rem',
-                      zIndex: 3
+                      zIndex: 4
                     }}>
                       <span style={{ fontSize: '1.1rem', marginBottom: '0.75rem', fontWeight: 600 }}>Noter (1 - 10)</span>
                       <div style={{
@@ -359,6 +368,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                               fontSize: '0.85rem',
                               cursor: 'pointer',
                             }}
+                            className="rating-num-btn"
                           >
                             {num}
                           </button>
@@ -381,7 +391,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                   )}
                 </div>
 
-                {/* Info block */}
+                {/* Bloc d'informations */}
                 <div style={{ padding: '1rem', flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexGrow: 1 }} title={media.title}>
@@ -392,7 +402,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     </span>
                   </div>
 
-                  {/* Status badges in library */}
+                  {/* Badges de statut dans la bibliothèque */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '0.5rem 0', minHeight: '22px' }}>
                     {libraryItem ? (
                       <>
@@ -426,7 +436,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     )}
                   </div>
 
-                  {/* Action buttons */}
+                  {/* Boutons d'action */}
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -435,7 +445,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                     paddingTop: '0.75rem',
                     marginTop: '0.25rem'
                   }}>
-                    {/* TV Show Progress Tracker Button */}
+                    {/* Bouton de suivi de progression de série */}
                     {media.media_type === 'tv' && (
                       <button
                         onClick={() => handleAdd(media.tmdb_id, media.media_type, 'watching')}
@@ -459,7 +469,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                       </button>
                     )}
 
-                    {/* Add to Watched Button */}
+                    {/* Bouton marquer comme vu */}
                     <button
                       onClick={() => setActiveRatingSelector(media.tmdb_id)}
                       disabled={addingId !== null || libraryItem?.watched}
@@ -477,7 +487,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                       {libraryItem?.watched ? '✓ Déjà vu' : '👁️ Marquer comme vu'}
                     </button>
 
-                    {/* Add to DVD Owned Button */}
+                    {/* Bouton ajouter aux DVD achetés */}
                     <button
                       onClick={() => handleAdd(media.tmdb_id, media.media_type, 'dvd_owned')}
                       disabled={addingId !== null || libraryItem?.dvd_owned}
@@ -499,7 +509,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                           : '📀 Ajouter aux DVD achetés'}
                     </button>
 
-                    {/* Add to DVD Wishlist Button */}
+                    {/* Bouton ajouter aux souhaits DVD */}
                     <button
                       onClick={() => handleAdd(media.tmdb_id, media.media_type, 'dvd_wishlist')}
                       disabled={addingId !== null || libraryItem?.dvd_wishlist}

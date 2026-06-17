@@ -12,22 +12,25 @@ interface MediaCardProps {
 export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) {
   const [hovered, setHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
   useEffect(() => {
     setMounted(true);
   }, []);
+
   const [showRatingSelector, setShowRatingSelector] = useState(false);
   const [showEpisodesModal, setShowEpisodesModal] = useState(false);
   const [selectedSeasonInModal, setSelectedSeasonInModal] = useState<number>(1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
+  // Charger les épisodes d'une saison spécifique via l'API
   const loadEpisodes = async (seasonNum: number) => {
     setLoadingEpisodes(true);
     try {
       const data = await getEpisodes(item.id, seasonNum);
       setEpisodes(data);
     } catch (err) {
-      console.error("Failed to load episodes", err);
+      console.error("Échec lors du chargement des épisodes", err);
     } finally {
       setLoadingEpisodes(false);
     }
@@ -80,10 +83,10 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
 
   const toggleWatched = () => {
     if (item.watched) {
-      // Unmark watched
+      // Retirer le statut "vu" et la note
       onUpdate(item.id, { watched: false, rating: null });
     } else {
-      // Show rating selector when marking as watched
+      // Afficher le sélecteur de note lorsqu'on marque le média comme vu
       setShowRatingSelector(!showRatingSelector);
     }
   };
@@ -92,7 +95,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
     const nextState = !item.dvd_owned;
     onUpdate(item.id, { 
       dvd_owned: nextState,
-      // If adding to owned, remove from wishlist
+      // Si ajouté aux DVD possédés, on le retire des souhaits
       dvd_wishlist: nextState ? false : item.dvd_wishlist 
     });
   };
@@ -101,7 +104,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
     const nextState = !item.dvd_wishlist;
     onUpdate(item.id, { 
       dvd_wishlist: nextState,
-      // If adding to wishlist, remove from owned
+      // Si ajouté aux souhaits, on le retire des DVD possédés
       dvd_owned: nextState ? false : item.dvd_owned
     });
   };
@@ -110,15 +113,22 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
     const nextState = !item.watching;
     onUpdate(item.id, { 
       watching: nextState,
-      // If setting to watching, remove from watched
+      // Si configuré comme "En cours", on retire le statut "Déjà vu"
       watched: nextState ? false : item.watched,
       rating: nextState ? null : item.rating
     });
   };
 
+  // Déterminer la classe de statut pour appliquer les styles néons définis dans globals.css
+  let statusClass = '';
+  if (item.watching) statusClass = 'card-watching';
+  else if (item.watched) statusClass = 'card-watched';
+  else if (item.dvd_owned) statusClass = 'card-dvd_owned';
+  else if (item.dvd_wishlist) statusClass = 'card-dvd_wishlist';
+
   return (
     <div 
-      className="media-card glass-panel"
+      className={`media-card glass-panel ${statusClass}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
@@ -130,25 +140,11 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
         position: 'relative',
         overflow: 'hidden',
         height: '100%',
-        minHeight: '380px',
-        border: item.watching
-          ? '1px solid rgba(59, 130, 246, 0.35)'
-          : item.watched 
-            ? '1px solid rgba(139, 92, 246, 0.25)' 
-            : item.dvd_owned 
-              ? '1px solid rgba(6, 182, 212, 0.25)' 
-              : '1px solid var(--card-border)',
-        boxShadow: item.watching
-          ? '0 4px 15px rgba(59, 130, 246, 0.12)'
-          : item.watched
-            ? '0 4px 15px rgba(139, 92, 246, 0.08)'
-            : item.dvd_owned
-              ? '0 4px 15px rgba(6, 182, 212, 0.08)'
-              : 'none'
+        minHeight: '380px'
       }}
     >
-      {/* Poster Container */}
-      <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#100e17', overflow: 'hidden', minHeight: '260px' }}>
+      {/* Conteneur de l'affiche de film/série */}
+      <div style={{ position: 'relative', flexGrow: 1, backgroundColor: '#0f0e15', overflow: 'hidden', minHeight: '260px' }}>
         {posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img 
@@ -179,7 +175,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           </div>
         )}
 
-        {/* Media Type Badge */}
+        {/* Badge de Type de média (Film / Série) */}
         <span style={{
           position: 'absolute',
           top: '12px',
@@ -198,7 +194,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           {item.media_type === 'movie' ? 'Film' : 'Série'}
         </span>
 
-        {/* Hover Overview Overlay */}
+        {/* Volet de Synopsis au survol */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -230,7 +226,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           </p>
         </div>
 
-        {/* Rating Selector Overlay */}
+        {/* Sélecteur de Note (Overlay) */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -293,7 +289,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
         </div>
       </div>
 
-      {/* Info Container */}
+      {/* Zone des informations principales */}
       <div style={{ padding: '1rem', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <h3 
@@ -323,7 +319,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           </span>
         </div>
 
-        {/* TV Progress Tracker */}
+        {/* Suivi et contrôle de progression pour les séries télévisées */}
         {item.media_type === 'tv' && (
           <div style={{
             background: item.watching ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
@@ -368,7 +364,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
-              {/* Season Control */}
+              {/* Contrôle des Saisons */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sais.</span>
                 <button
@@ -424,7 +420,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                 </button>
               </div>
 
-              {/* Episode Control */}
+              {/* Contrôle des Épisodes */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ép.</span>
                 <button
@@ -492,7 +488,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                   }}
                   style={{ cursor: 'pointer', width: '13px', height: '13px' }}
                 />
-                <span>Fini 🏁</span>
+                <span>Terminé 🏁</span>
               </label>
 
               <button
@@ -519,7 +515,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           </div>
         )}
 
-        {/* Rating Display */}
+        {/* Affichage de la Note décernée */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '0.5rem 0', minHeight: '20px' }}>
           {item.watched ? (
             <>
@@ -532,11 +528,11 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               </span>
             </>
           ) : (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Non noté / non vu</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Non noté</span>
           )}
         </div>
 
-        {/* Badges Container */}
+        {/* Conteneur des Badges de Statut */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
           {item.watching && (
             <span style={{
@@ -579,7 +575,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           )}
         </div>
 
-        {/* Actions Row */}
+        {/* Ligne d'actions rapides */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -588,9 +584,9 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           paddingTop: '0.75rem',
           marginTop: '0.25rem'
         }}>
-          {/* Status Buttons */}
+          {/* Boutons d'activation de statuts */}
           <div style={{ display: 'flex', gap: '6px' }}>
-            {/* Eye Icon for Watched */}
+            {/* Icône de visionnage (Vu / Noter) */}
             <button
               onClick={toggleWatched}
               style={{
@@ -611,7 +607,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               👁️
             </button>
 
-            {/* TV Show Watching Button */}
+            {/* Suivi de série télévisée */}
             {item.media_type === 'tv' && (
               <button
                 onClick={toggleWatching}
@@ -634,7 +630,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               </button>
             )}
 
-            {/* DVD Owned Button */}
+            {/* DVD possédé */}
             <button
               onClick={toggleDvdOwned}
               style={{
@@ -655,7 +651,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               📀
             </button>
 
-            {/* DVD Wishlist Button */}
+            {/* Liste de souhaits de DVD */}
             <button
               onClick={toggleDvdWishlist}
               style={{
@@ -677,7 +673,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
             </button>
           </div>
 
-          {/* Delete Button */}
+          {/* Bouton supprimer */}
           <button
             onClick={() => {
               if (confirm(`Voulez-vous vraiment retirer "${item.title}" de votre bibliothèque ?`)) {
@@ -707,7 +703,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
         </div>
       </div>
 
-      {/* Episodes Overlay Modal */}
+      {/* Fenêtre Modal de la liste d'épisodes (Django + TMDB) */}
       {mounted && showEpisodesModal && createPortal(
         <div style={{
           position: 'fixed',
@@ -716,7 +712,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           width: '100vw',
           height: '100vh',
           background: 'rgba(5, 5, 8, 0.85)',
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(12px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -729,19 +725,19 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
           <div style={{
             background: 'var(--card-bg)',
             border: '1px solid var(--card-border)',
-            borderRadius: '16px',
+            borderRadius: '20px',
             width: '100%',
             maxWidth: '650px',
             maxHeight: '85vh',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
             overflow: 'hidden',
             animation: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
           onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
+            {/* En-tête de la Modal */}
             <div style={{
               padding: '1.25rem 1.5rem',
               borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
@@ -750,7 +746,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               alignItems: 'center'
             }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
                   {item.title}
                 </h2>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -780,7 +776,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               </button>
             </div>
 
-            {/* Season Tabs Selector */}
+            {/* Onglets de sélection des saisons */}
             {item.seasons_data && item.seasons_data.length > 0 && (
               <div style={{
                 display: 'flex',
@@ -791,7 +787,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                 overflowX: 'auto',
                 whiteSpace: 'nowrap',
-                scrollbarWidth: 'thin'
+                scrollbarWidth: 'none'
               }} className="season-tabs">
                 {[...(item.seasons_data || [])]
                   .sort((a, b) => a.season_number - b.season_number)
@@ -823,7 +819,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
               </div>
             )}
 
-            {/* Modal Body / Episodes List */}
+            {/* Liste des épisodes */}
             <div style={{
               flexGrow: 1,
               overflowY: 'auto',
@@ -853,8 +849,8 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                     <div 
                       key={ep.episode_number}
                       style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: isLastWatched ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                        background: 'rgba(255, 255, 255, 0.015)',
+                        border: isLastWatched ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.04)',
                         borderRadius: '12px',
                         padding: '1rem',
                         display: 'flex',
@@ -865,18 +861,18 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                        if (!isLastWatched) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        if (!isLastWatched) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                        if (!isLastWatched) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.015)';
+                        if (!isLastWatched) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.04)';
                       }}
                     >
-                      {/* Episode Image Preview */}
+                      {/* Vignette de l'épisode */}
                       <div style={{
                         width: '100px',
                         height: '65px',
-                        borderRadius: '6px',
+                        borderRadius: '8px',
                         overflow: 'hidden',
                         background: '#141419',
                         flexShrink: 0,
@@ -897,7 +893,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                         )}
                       </div>
 
-                      {/* Episode Content */}
+                      {/* Contenu et synopsis de l'épisode */}
                       <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                           <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
