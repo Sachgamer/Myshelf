@@ -14,15 +14,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   // Récupérer tous les éléments au montage du composant
-  const fetchItems = async () => {
-    setLoading(true);
+  const fetchItems = async (showGlobalLoader = false) => {
+    if (showGlobalLoader) setLoading(true);
     const data = await getItems();
     setItems(data);
-    setLoading(false);
+    if (showGlobalLoader) setLoading(false);
   };
 
   useEffect(() => {
-    fetchItems();
+    fetchItems(true);
   }, []);
 
   const handleUpdateItem = async (id: number, data: Partial<MediaItem>) => {
@@ -208,7 +208,7 @@ export default function Home() {
           </div>
         ) : activeTab === 'search' ? (
           // Section de recherche TMDB
-          <SearchSection onItemAdded={fetchItems} />
+          <SearchSection onItemAdded={() => fetchItems(false)} />
         ) : (
           // Grille des étagères de la bibliothèque
           <ShelfSection 
