@@ -77,7 +77,7 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
     : null;
 
   const handleRatingChange = (rating: number) => {
-    onUpdate(item.id, { rating, watched: true });
+    onUpdate(item.id, { rating, watched: true, watching: false });
     setShowRatingSelector(false);
   };
 
