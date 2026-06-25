@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     
     # Third party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     
     # Local apps
@@ -140,4 +141,12 @@ CORS_ALLOW_CREDENTIALS = True
 # TMDB API configuration
 TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
 TMDB_API_READ_ACCESS_TOKEN = os.getenv('TMDB_API_READ_ACCESS_TOKEN', '')
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
 

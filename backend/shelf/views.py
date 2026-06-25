@@ -1,13 +1,17 @@
 import os
 import requests
 from django.conf import settings
-from rest_framework import viewsets, status
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.db.models import Q
+from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db.models import Q
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import MediaItem
+from .models import MediaItem, UserProfile
 from .serializers import MediaItemSerializer
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
@@ -161,15 +165,168 @@ class TMDBSearchView(APIView):
         ]
         return Response(mock_results)
 
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email', '')
+
+        if not username or not password:
+            return Response(
+                {"error": "Le nom d'utilisateur et le mot de passe sont requis."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"error": "Ce nom d'utilisateur est déjà pris."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create user
+        user = User.objects.create_user(username=username, password=password, email=email)
+        token, _ = Token.objects.get_or_create(user=user)
+
+        # Check for orphan media items (user=None) and associate them with this first user
+        # This prevents losing existing local library data
+        orphans = MediaItem.objects.filter(user__isnull=True)
+        orphan_count = orphans.count()
+        if orphan_count > 0:
+            orphans.update(user=user)
+
+        return Response({
+            "token": token.key,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            },
+            "associated_orphans": orphan_count
+        }, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        if not username or not password:
+            return Response(
+                {"error": "Le nom d'utilisateur et le mot de passe sont requis."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = authenticate(username=username, password=password)
+        if not user:
+            return Response(
+                {"error": "Identifiants invalides."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            "token": token.key,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        })
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # Delete token to invalidate session
+            request.user.auth_token.delete()
+        except (AttributeError, Token.DoesNotExist):
+            pass
+        return Response({"message": "Déconnexion réussie."}, status=status.HTTP_200_OK)
+
+
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "id": request.user.id,
+            "username": request.user.username,
+            "email": request.user.email
+        })
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        return Response({
+            "is_public": profile.is_public
+        })
+
+    def patch(self, request):
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        is_public = request.data.get('is_public')
+        if is_public is not None:
+            profile.is_public = bool(is_public)
+            profile.save()
+        return Response({
+            "is_public": profile.is_public
+        })
+
+
+class PublicShelfView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, username):
+        try:
+            target_user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "Utilisateur non trouvé."}, status=status.HTTP_404_NOT_FOUND)
+
+        profile, _ = UserProfile.objects.get_or_create(user=target_user)
+        if not profile.is_public:
+            return Response({"error": "Cette bibliothèque est privée."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Retrieve target user's media items
+        queryset = MediaItem.objects.filter(user=target_user)
+        
+        # Apply same filters
+        watched = request.query_params.get('watched')
+        watching = request.query_params.get('watching')
+        dvd_owned = request.query_params.get('dvd_owned')
+        dvd_wishlist = request.query_params.get('dvd_wishlist')
+        
+        if watched is not None:
+            queryset = queryset.filter(watched=(watched.lower() == 'true'))
+        if watching is not None:
+            queryset = queryset.filter(watching=(watching.lower() == 'true'))
+        if dvd_owned is not None:
+            queryset = queryset.filter(dvd_owned=(dvd_owned.lower() == 'true'))
+        if dvd_wishlist is not None:
+            queryset = queryset.filter(dvd_wishlist=(dvd_wishlist.lower() == 'true'))
+
+        serializer = MediaItemSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
 class MediaItemViewSet(viewsets.ModelViewSet):
     """
     ViewSet to manage the user's shelf items.
     """
     queryset = MediaItem.objects.all()
     serializer_class = MediaItemSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = MediaItem.objects.all()
+        queryset = MediaItem.objects.filter(user=self.request.user)
         
         # Filtering by status flags
         watched = self.request.query_params.get('watched')
@@ -205,9 +362,9 @@ class MediaItemViewSet(viewsets.ModelViewSet):
         except ValueError:
             return Response({"error": "L'identifiant tmdb_id doit être un entier."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if item already exists in the database
+        # Check if item already exists in the database for this user
         try:
-            item = MediaItem.objects.get(tmdb_id=tmdb_id, media_type=media_type)
+            item = MediaItem.objects.get(tmdb_id=tmdb_id, media_type=media_type, user=request.user)
             
             # Retrieve total seasons, episodes and seasons_data mapping for TV show if missing
             if item.media_type == 'tv' and (item.total_seasons is None or item.total_episodes is None or item.seasons_data is None):
@@ -302,6 +459,7 @@ class MediaItemViewSet(viewsets.ModelViewSet):
 
             # Create media item
             item = MediaItem(
+                user=request.user,
                 tmdb_id=tmdb_id,
                 media_type=media_type,
                 title=title,

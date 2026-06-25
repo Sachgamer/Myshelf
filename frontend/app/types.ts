@@ -16,8 +16,15 @@ export interface MediaItem {
   rating: number | null;
   dvd_owned: boolean;
   dvd_wishlist: boolean;
+  user: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface User {
+  id: number;
+  username: string;
+  email?: string;
 }
 
 export interface Episode {

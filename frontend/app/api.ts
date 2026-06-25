@@ -1,10 +1,39 @@
-import { MediaItem, SearchResult, Episode } from './types';
+import { MediaItem, SearchResult, Episode, User } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+
+  // Si on est sur Android (via Capacitor) et qu'on utilise l'émulateur
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    // Note: Dans un vrai build Capacitor, l'origine peut être différente (ex: capacitor://localhost)
+    // Mais pour le dev local, on peut vouloir viser l'IP de l'hôte
+    return 'http://10.0.2.2:8000/api';
+  }
+
+  return 'http://localhost:8000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+function getHeaders(includeContentType = true): HeadersInit {
+  const headers: HeadersInit = {};
+  if (includeContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('myshelf_token');
+    if (token) {
+      headers['Authorization'] = `Token ${token}`;
+    }
+  }
+  return headers;
+}
 
 export async function searchMedia(query: string): Promise<SearchResult[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/search/?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${API_BASE_URL}/search/?q=${encodeURIComponent(query)}`, {
+      headers: getHeaders(false)
+    });
     if (!res.ok) throw new Error("Erreur de recherche");
     return await res.json();
   } catch (error) {
@@ -32,7 +61,9 @@ export async function getItems(filters?: {
     const queryString = params.toString();
     if (queryString) url += `?${queryString}`;
     
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: getHeaders(false)
+    });
     if (!res.ok) throw new Error("Erreur de récupération des items");
     return await res.json();
   } catch (error) {
@@ -50,9 +81,7 @@ export async function addItem(
   try {
     const res = await fetch(`${API_BASE_URL}/items/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
       body: JSON.stringify({
         tmdb_id: tmdbId,
         media_type: mediaType,
@@ -75,9 +104,7 @@ export async function updateItem(
   try {
     const res = await fetch(`${API_BASE_URL}/items/${id}/`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Erreur de mise à jour");
@@ -92,6 +119,7 @@ export async function deleteItem(id: number): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE_URL}/items/${id}/`, {
       method: 'DELETE',
+      headers: getHeaders(false)
     });
     if (!res.ok) throw new Error("Erreur de suppression");
     return true;
@@ -103,11 +131,124 @@ export async function deleteItem(id: number): Promise<boolean> {
 
 export async function getEpisodes(itemId: number, season: number): Promise<Episode[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/items/${itemId}/episodes/?season=${season}`);
+    const res = await fetch(`${API_BASE_URL}/items/${itemId}/episodes/?season=${season}`, {
+      headers: getHeaders(false)
+    });
     if (!res.ok) throw new Error("Erreur de récupération des épisodes");
     return await res.json();
   } catch (error) {
     console.error("API Error getEpisodes:", error);
     return [];
+  }
+}
+
+// Authentication API calls
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+  associated_orphans?: number;
+}
+
+export async function login(username: string, password: string): Promise<AuthResponse | null> {
+  const res = await fetch(`${API_BASE_URL}/login/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ username, password })
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || "Erreur de connexion");
+  }
+  return await res.json();
+}
+
+export async function register(username: string, password: string, email?: string): Promise<AuthResponse | null> {
+  const res = await fetch(`${API_BASE_URL}/register/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ username, password, email })
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || "Erreur d'inscription");
+  }
+  return await res.json();
+}
+
+export async function logout(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/logout/`, {
+      method: 'POST',
+      headers: getHeaders(false)
+    });
+    return res.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('myshelf_token') : null;
+    if (!token) return null;
+
+    const res = await fetch(`${API_BASE_URL}/me/`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function getProfile(): Promise<{ is_public: boolean } | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/me/profile/`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur profile");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error getProfile:", error);
+    return null;
+  }
+}
+
+export async function updateProfile(data: { is_public: boolean }): Promise<{ is_public: boolean } | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/me/profile/`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur update profile");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error updateProfile:", error);
+    return null;
+  }
+}
+
+export async function getPublicItems(username: string): Promise<MediaItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/public/shelf/${encodeURIComponent(username)}/`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Erreur de chargement public");
+    }
+    return await res.json();
+  } catch (error: any) {
+    console.error("API Error getPublicItems:", error);
+    throw error;
   }
 }

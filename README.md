@@ -58,6 +58,36 @@ Le frontend sera accessible sur [http://localhost:3000/](http://localhost:3000/)
 
 ---
 
+## Version Android 📱
+
+Le projet est maintenant configuré avec **Capacitor** pour être utilisé comme une application Android native.
+
+### Pré-requis
+* Android Studio installé.
+* SDK Android configuré.
+
+### Démarrage de l'app Android
+1. **Générer le build statique du frontend** :
+   ```bash
+   cd frontend
+   export PATH="$(pwd)/../node-env/bin:$PATH"
+   npm run build
+   ```
+2. **Synchroniser avec le projet Android** :
+   ```bash
+   npx cap sync android
+   ```
+3. **Ouvrir dans Android Studio** :
+   ```bash
+   npx cap open android
+   ```
+   Ou ouvrez directement le dossier `frontend/android` dans Android Studio.
+
+4. **Lancer sur l'émulateur** :
+   L'application est configurée pour pointer vers `http://10.0.2.2:8000/api` (l'IP par défaut pour accéder à votre machine hôte depuis l'émulateur Android).
+
+---
+
 ## Fonctionnalités incluses
 
 * **Tableau de bord de statistiques** : Suivi du nombre de titres, moyenne des notes, nombre de DVD achetés et souhaités.

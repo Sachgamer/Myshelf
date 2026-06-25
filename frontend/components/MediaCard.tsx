@@ -7,9 +7,10 @@ interface MediaCardProps {
   item: MediaItem;
   onUpdate: (id: number, data: Partial<MediaItem>) => void;
   onDelete: (id: number) => void;
+  readOnly?: boolean;
 }
 
-export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) {
+export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }: MediaCardProps) {
   const [hovered, setHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
   
@@ -321,198 +322,236 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
 
         {/* Suivi et contrôle de progression pour les séries télévisées */}
         {item.media_type === 'tv' && (
-          <div style={{
-            background: item.watching ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-            border: item.watching ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
-            borderRadius: '8px',
-            padding: '0.4rem 0.5rem',
-            margin: '0.4rem 0',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: item.watching ? '#60a5fa' : 'var(--text-secondary)' }}>
-                {item.watching ? '📺 EN COURS' : '📺 SUIVRE LA SÉRIE'}
+          readOnly ? (
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              padding: '0.55rem 0.75rem',
+              margin: '0.4rem 0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                📺 PROGRESSION
               </span>
-              {item.watching && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>
+                  S{item.current_season || 1} • Ép {item.current_episode || 0}
+                </span>
                 <button
-                  onClick={() => {
-                    const nextEpisode = (item.current_episode || 0) + 1;
-                    if (maxEpisodesForCurrentSeason === null || maxEpisodesForCurrentSeason === undefined || nextEpisode <= maxEpisodesForCurrentSeason) {
-                      onUpdate(item.id, { current_episode: nextEpisode });
-                    }
-                  }}
-                  disabled={maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason}
+                  onClick={handleOpenEpisodesModal}
                   style={{
-                    background: 'rgba(59, 130, 246, 0.2)',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
-                    borderRadius: '4px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
                     color: '#60a5fa',
-                    fontSize: '0.7rem',
+                    fontSize: '0.72rem',
                     fontWeight: 700,
-                    padding: '0.15rem 0.45rem',
-                    cursor: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 'not-allowed' : 'pointer',
-                    opacity: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 0.4 : 1,
-                    transition: 'all 0.2s'
-                  }}
-                  title="Incrémenter l'épisode"
-                >
-                  +1 Ep.
-                </button>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
-              {/* Contrôle des Saisons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sais.</span>
-                <button
-                  onClick={() => {
-                    const prevSeason = Math.max(1, (item.current_season || 1) - 1);
-                    handleSeasonChange(prevSeason);
-                  }}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     cursor: 'pointer',
-                    fontSize: '0.75rem'
+                    padding: '2px 6px',
+                    borderRadius: '4px'
                   }}
+                  title="Voir les épisodes"
                 >
-                  -
-                </button>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, minWidth: '12px', textAlign: 'center', color: '#fff' }}>
-                  {item.current_season || 1}
-                  {item.total_seasons ? `/${item.total_seasons}` : ''}
-                </span>
-                <button
-                  onClick={() => {
-                    const nextSeason = (item.current_season || 1) + 1;
-                    if (item.total_seasons === null || item.total_seasons === undefined || nextSeason <= item.total_seasons) {
-                      handleSeasonChange(nextSeason);
-                    }
-                  }}
-                  disabled={item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: (item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons) ? 'not-allowed' : 'pointer',
-                    opacity: (item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons) ? 0.3 : 1,
-                    fontSize: '0.75rem',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Contrôle des Épisodes */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ép.</span>
-                <button
-                  onClick={() => onUpdate(item.id, { current_episode: Math.max(0, (item.current_episode || 0) - 1) })}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem'
-                  }}
-                >
-                  -
-                </button>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, minWidth: '12px', textAlign: 'center', color: '#fff' }}>
-                  {item.current_episode !== null && item.current_episode !== undefined ? item.current_episode : 0}
-                  {maxEpisodesForCurrentSeason ? `/${maxEpisodesForCurrentSeason}` : ''}
-                </span>
-                <button
-                  onClick={() => {
-                    const nextEpisode = (item.current_episode || 0) + 1;
-                    if (maxEpisodesForCurrentSeason === null || maxEpisodesForCurrentSeason === undefined || nextEpisode <= maxEpisodesForCurrentSeason) {
-                      onUpdate(item.id, { current_episode: nextEpisode });
-                    }
-                  }}
-                  disabled={maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 'not-allowed' : 'pointer',
-                    opacity: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 0.3 : 1,
-                    fontSize: '0.75rem',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  +
+                  Détails ℹ️
                 </button>
               </div>
             </div>
+          ) : (
+            <div style={{
+              background: item.watching ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              border: item.watching ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              padding: '0.4rem 0.5rem',
+              margin: '0.4rem 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: item.watching ? '#60a5fa' : 'var(--text-secondary)' }}>
+                  {item.watching ? '📺 EN COURS' : '📺 SUIVRE LA SÉRIE'}
+                </span>
+                {item.watching && (
+                  <button
+                    onClick={() => {
+                      const nextEpisode = (item.current_episode || 0) + 1;
+                      if (maxEpisodesForCurrentSeason === null || maxEpisodesForCurrentSeason === undefined || nextEpisode <= maxEpisodesForCurrentSeason) {
+                        onUpdate(item.id, { current_episode: nextEpisode });
+                      }
+                    }}
+                    disabled={maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason}
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      borderRadius: '4px',
+                      color: '#60a5fa',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      padding: '0.15rem 0.45rem',
+                      cursor: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 'not-allowed' : 'pointer',
+                      opacity: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 0.4 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                    title="Incrémenter l'épisode"
+                  >
+                    +1 Ep.
+                  </button>
+                )}
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '6px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '0.75rem', color: item.watched ? 'var(--rating-color)' : 'var(--text-secondary)' }}>
-                <input
-                  type="checkbox"
-                  checked={item.watched}
-                  onChange={() => {
-                    if (!item.watched) {
-                      setShowRatingSelector(true);
-                    } else {
-                      onUpdate(item.id, { watched: false, rating: null });
-                    }
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Contrôle des Saisons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sais.</span>
+                  <button
+                    onClick={() => {
+                      const prevSeason = Math.max(1, (item.current_season || 1) - 1);
+                      handleSeasonChange(prevSeason);
+                    }}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem'
+                    }}
+                  >
+                    -
+                  </button>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, minWidth: '12px', textAlign: 'center', color: '#fff' }}>
+                    {item.current_season || 1}
+                    {item.total_seasons ? `/${item.total_seasons}` : ''}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const nextSeason = (item.current_season || 1) + 1;
+                      if (item.total_seasons === null || item.total_seasons === undefined || nextSeason <= item.total_seasons) {
+                        handleSeasonChange(nextSeason);
+                      }
+                    }}
+                    disabled={item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: (item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons) ? 'not-allowed' : 'pointer',
+                      opacity: (item.total_seasons !== null && item.total_seasons !== undefined && (item.current_season || 1) >= item.total_seasons) ? 0.3 : 1,
+                      fontSize: '0.75rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Contrôle des Épisodes */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ép.</span>
+                  <button
+                    onClick={() => onUpdate(item.id, { current_episode: Math.max(0, (item.current_episode || 0) - 1) })}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem'
+                    }}
+                  >
+                    -
+                  </button>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, minWidth: '12px', textAlign: 'center', color: '#fff' }}>
+                    {item.current_episode !== null && item.current_episode !== undefined ? item.current_episode : 0}
+                    {maxEpisodesForCurrentSeason ? `/${maxEpisodesForCurrentSeason}` : ''}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const nextEpisode = (item.current_episode || 0) + 1;
+                      if (maxEpisodesForCurrentSeason === null || maxEpisodesForCurrentSeason === undefined || nextEpisode <= maxEpisodesForCurrentSeason) {
+                        onUpdate(item.id, { current_episode: nextEpisode });
+                      }
+                    }}
+                    disabled={maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 'not-allowed' : 'pointer',
+                      opacity: (maxEpisodesForCurrentSeason !== null && maxEpisodesForCurrentSeason !== undefined && (item.current_episode || 0) >= maxEpisodesForCurrentSeason) ? 0.3 : 1,
+                      fontSize: '0.75rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '0.75rem', color: item.watched ? 'var(--rating-color)' : 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={item.watched}
+                    onChange={() => {
+                      if (!item.watched) {
+                        setShowRatingSelector(true);
+                      } else {
+                        onUpdate(item.id, { watched: false, rating: null });
+                      }
+                    }}
+                    style={{ cursor: 'pointer', width: '13px', height: '13px' }}
+                  />
+                  <span>Terminé 🏁</span>
+                </label>
+
+                <button
+                  onClick={handleOpenEpisodesModal}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#60a5fa',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    transition: 'opacity 0.2s'
                   }}
-                  style={{ cursor: 'pointer', width: '13px', height: '13px' }}
-                />
-                <span>Terminé 🏁</span>
-              </label>
-
-              <button
-                onClick={handleOpenEpisodesModal}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#60a5fa',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '2px 4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2px',
-                  transition: 'opacity 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              >
-                ℹ️ Épisodes
-              </button>
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  ℹ️ Épisodes
+                </button>
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Affichage de la Note décernée */}
@@ -576,43 +615,22 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
         </div>
 
         {/* Ligne d'actions rapides */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          paddingTop: '0.75rem',
-          marginTop: '0.25rem'
-        }}>
-          {/* Boutons d'activation de statuts */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {/* Icône de visionnage (Vu / Noter) */}
-            <button
-              onClick={toggleWatched}
-              style={{
-                background: item.watched ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                border: 'none',
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                color: item.watched ? '#fff' : 'var(--text-secondary)'
-              }}
-              title={item.watched ? "Marquer comme non vu" : "Marquer comme vu et noter"}
-            >
-              👁️
-            </button>
-
-            {/* Suivi de série télévisée */}
-            {item.media_type === 'tv' && (
+        {!readOnly && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            paddingTop: '0.75rem',
+            marginTop: '0.25rem'
+          }}>
+            {/* Boutons d'activation de statuts */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {/* Icône de visionnage (Vu / Noter) */}
               <button
-                onClick={toggleWatching}
+                onClick={toggleWatched}
                 style={{
-                  background: item.watching ? '#3b82f6' : 'rgba(255,255,255,0.05)',
+                  background: item.watched ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
                   border: 'none',
                   width: '32px',
                   height: '32px',
@@ -622,19 +640,88 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                   justifyContent: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  color: item.watching ? '#fff' : 'var(--text-secondary)'
+                  color: item.watched ? '#fff' : 'var(--text-secondary)'
                 }}
-                title={item.watching ? "Arrêter de suivre cette série" : "Suivre la série en cours de visionnage"}
+                title={item.watched ? "Marquer comme non vu" : "Marquer comme vu et noter"}
               >
-                📺
+                👁️
               </button>
-            )}
 
-            {/* DVD possédé */}
+              {/* Suivi de série télévisée */}
+              {item.media_type === 'tv' && (
+                <button
+                  onClick={toggleWatching}
+                  style={{
+                    background: item.watching ? '#3b82f6' : 'rgba(255,255,255,0.05)',
+                    border: 'none',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    color: item.watching ? '#fff' : 'var(--text-secondary)'
+                  }}
+                  title={item.watching ? "Arrêter de suivre cette série" : "Suivre la série en cours de visionnage"}
+                >
+                  📺
+                </button>
+              )}
+
+              {/* DVD possédé */}
+              <button
+                onClick={toggleDvdOwned}
+                style={{
+                  background: item.dvd_owned ? 'var(--dvd-color)' : 'rgba(255,255,255,0.05)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: item.dvd_owned ? '#fff' : 'var(--text-secondary)'
+                }}
+                title={item.dvd_owned ? "Retirer des DVD possédés" : "Ajouter aux DVD possédés"}
+              >
+                📀
+              </button>
+
+              {/* Liste de souhaits de DVD */}
+              <button
+                onClick={toggleDvdWishlist}
+                style={{
+                  background: item.dvd_wishlist ? 'var(--wishlist-color)' : 'rgba(255,255,255,0.05)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: item.dvd_wishlist ? '#fff' : 'var(--text-secondary)'
+                }}
+                title={item.dvd_wishlist ? "Retirer de la liste d'achats DVD" : "Ajouter à la liste d'achats DVD"}
+              >
+                💖
+              </button>
+            </div>
+
+            {/* Bouton supprimer */}
             <button
-              onClick={toggleDvdOwned}
+              onClick={() => {
+                if (confirm(`Voulez-vous vraiment retirer "${item.title}" de votre bibliothèque ?`)) {
+                  onDelete(item.id);
+                }
+              }}
               style={{
-                background: item.dvd_owned ? 'var(--dvd-color)' : 'rgba(255,255,255,0.05)',
+                background: 'transparent',
                 border: 'none',
                 width: '32px',
                 height: '32px',
@@ -643,64 +730,18 @@ export default function MediaCard({ item, onUpdate, onDelete }: MediaCardProps) 
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                color: 'var(--text-secondary)',
                 transition: 'all 0.2s',
-                color: item.dvd_owned ? '#fff' : 'var(--text-secondary)'
               }}
-              title={item.dvd_owned ? "Retirer des DVD possédés" : "Ajouter aux DVD possédés"}
+              className="delete-btn"
+              title="Retirer complètement de MyShelf"
+              onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
             >
-              📀
-            </button>
-
-            {/* Liste de souhaits de DVD */}
-            <button
-              onClick={toggleDvdWishlist}
-              style={{
-                background: item.dvd_wishlist ? 'var(--wishlist-color)' : 'rgba(255,255,255,0.05)',
-                border: 'none',
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                color: item.dvd_wishlist ? '#fff' : 'var(--text-secondary)'
-              }}
-              title={item.dvd_wishlist ? "Retirer de la liste d'achats DVD" : "Ajouter à la liste d'achats DVD"}
-            >
-              💖
+              🗑️
             </button>
           </div>
-
-          {/* Bouton supprimer */}
-          <button
-            onClick={() => {
-              if (confirm(`Voulez-vous vraiment retirer "${item.title}" de votre bibliothèque ?`)) {
-                onDelete(item.id);
-              }
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              transition: 'all 0.2s',
-            }}
-            className="delete-btn"
-            title="Retirer complètement de MyShelf"
-            onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-          >
-            🗑️
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Fenêtre Modal de la liste d'épisodes (Django + TMDB) */}

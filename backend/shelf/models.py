@@ -1,10 +1,13 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class MediaItem(models.Model):
     MEDIA_TYPES = [
         ('movie', 'Film'),
         ('tv', 'Série'),
     ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='media_items', null=True, blank=True)
 
     tmdb_id = models.IntegerField()
     media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
@@ -44,4 +47,27 @@ class MediaItem(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_media_type_display()})"
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    is_public = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Profil de {self.user.username} (Public: {self.is_public})"
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
+    else:
+        UserProfile.objects.create(user=instance)
 
