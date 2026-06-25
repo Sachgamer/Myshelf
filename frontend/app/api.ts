@@ -3,11 +3,19 @@ import { MediaItem, SearchResult, Episode, User } from './types';
 const getApiBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
 
-  // Si on est sur Android (via Capacitor) et qu'on utilise l'émulateur
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    // Note: Dans un vrai build Capacitor, l'origine peut être différente (ex: capacitor://localhost)
-    // Mais pour le dev local, on peut vouloir viser l'IP de l'hôte
-    return 'http://10.0.2.2:8000/api';
+  if (typeof window !== 'undefined') {
+    // Si on utilise le serveur de dev sur le port 3000 standard de Next.js, on vise localhost
+    if (window.location.port === '3000') {
+      return 'http://localhost:8000/api';
+    }
+
+    // Si on est sur l'émulateur Android (via Capacitor), l'hôte 10.0.2.2 permet d'accéder au localhost de la machine de dev.
+    // Dans Capacitor Android, l'hostname est 'localhost' et le port est vide (ou protocole 'http:' / 'capacitor:')
+    const isCapacitor = !!(window as any).Capacitor;
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if ((isCapacitor || isAndroid) && window.location.hostname === 'localhost') {
+      return 'http://10.0.2.2:8000/api';
+    }
   }
 
   return 'http://localhost:8000/api';
