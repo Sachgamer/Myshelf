@@ -129,6 +129,13 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [sortBy, setSortBy] = useState<string>('date_desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
+
+  // Réinitialiser la page courante si les filtres ou l'onglet changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter, sortBy, activeTab]);
 
   // Filtrer les éléments selon l'onglet actif
   let filteredItems = items.filter(item => {
@@ -175,6 +182,12 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
     }
     return 0;
   });
+
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    (currentPage - 1) * ITEMS_PER_PAGE + ITEMS_PER_PAGE
+  );
 
   const getEmptyMessage = () => {
     switch(activeTab) {
@@ -460,21 +473,54 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
             </p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '24px'
-          }}>
-            {filteredItems.map(item => (
-              <MediaCard 
-                key={item.id} 
-                item={item} 
-                onUpdate={onUpdate} 
-                onDelete={onDelete} 
-                readOnly={readOnly}
-              />
-            ))}
-          </div>
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: '24px'
+            }}>
+              {paginatedItems.map(item => (
+                <MediaCard 
+                  key={item.id} 
+                  item={item} 
+                  onUpdate={onUpdate} 
+                  onDelete={onDelete} 
+                  readOnly={readOnly}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '3.5rem' }}>
+                <button 
+                  onClick={() => {
+                    setCurrentPage(prev => Math.max(prev - 1, 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }} 
+                  disabled={currentPage <= 1}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.55rem 1.2rem', borderRadius: '10px', fontWeight: 'bold' }}
+                >
+                  ⬅️ Précédent
+                </button>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', background: 'rgba(255,255,255,0.04)', padding: '0.45rem 1.1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  Page {currentPage} sur {totalPages}
+                </span>
+                <button 
+                  onClick={() => {
+                    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }} 
+                  disabled={currentPage >= totalPages}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.55rem 1.2rem', borderRadius: '10px', fontWeight: 'bold' }}
+                >
+                  Suivant ➡️
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
