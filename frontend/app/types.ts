@@ -43,3 +43,15 @@ export interface SearchResult {
   release_date: string | null;
   overview: string | null;
 }
+
+export interface RecommendationItem {
+  tmdb_id: number;
+  title: string;
+  media_type: 'movie' | 'tv';
+  poster_path: string | null;
+  release_date: string | null;
+  overview: string | null;
+  seed_title: string | null;
+  recommendation_type: 'personalized' | 'trending';
+}
+

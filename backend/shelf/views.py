@@ -1,4 +1,5 @@
 import os
+import random
 import requests
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -541,3 +542,107 @@ class MediaItemViewSet(viewsets.ModelViewSet):
                 "air_date": "2026-01-01"
             })
         return Response(mock_episodes)
+
+
+class RecommendationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_items = MediaItem.objects.filter(user=request.user)
+        user_tmdb_ids = set(user_items.values_list('tmdb_id', flat=True))
+        
+        seed_candidates = user_items.order_by('-rating', '-updated_at')[:3]
+        
+        recommendations = []
+        seen_recommendations = set()
+        
+        api_configured = bool(getattr(settings, 'TMDB_API_KEY', '') or getattr(settings, 'TMDB_API_READ_ACCESS_TOKEN', ''))
+        
+        if api_configured and seed_candidates.exists():
+            for seed in seed_candidates:
+                endpoint = f"{seed.media_type}/{seed.tmdb_id}/recommendations"
+                tmdb_data = query_tmdb(endpoint, {'language': 'fr-FR'})
+                
+                if tmdb_data and 'results' in tmdb_data:
+                    count = 0
+                    for item in tmdb_data['results']:
+                        if count >= 6:
+                            break
+                        tmdb_id = item.get('id')
+                        media_type = item.get('media_type', 'movie')
+                        if not media_type or media_type not in ['movie', 'tv']:
+                            media_type = seed.media_type
+                            
+                        if (tmdb_id, media_type) in seen_recommendations or tmdb_id in user_tmdb_ids:
+                            continue
+                            
+                        title = item.get('title') if media_type == 'movie' else item.get('name')
+                        release_date = item.get('release_date') if media_type == 'movie' else item.get('first_air_date')
+                        
+                        recommendations.append({
+                            "tmdb_id": tmdb_id,
+                            "title": title,
+                            "media_type": media_type,
+                            "poster_path": item.get('poster_path'),
+                            "release_date": release_date,
+                            "overview": item.get('overview', ''),
+                            "seed_title": seed.title,
+                            "recommendation_type": "personalized"
+                        })
+                        seen_recommendations.add((tmdb_id, media_type))
+                        count += 1
+                        
+        if len(recommendations) < 10:
+            trending_movies = query_tmdb('trending/movie/week', {'language': 'fr-FR'})
+            trending_tv = query_tmdb('trending/tv/week', {'language': 'fr-FR'})
+            
+            items_to_add = []
+            if trending_movies and 'results' in trending_movies:
+                items_to_add.extend([(item, 'movie') for item in trending_movies['results']])
+            if trending_tv and 'results' in trending_tv:
+                items_to_add.extend([(item, 'tv') for item in trending_tv['results']])
+                
+            random.shuffle(items_to_add)
+            
+            for item, media_type in items_to_add:
+                if len(recommendations) >= 15:
+                    break
+                tmdb_id = item.get('id')
+                if (tmdb_id, media_type) in seen_recommendations or tmdb_id in user_tmdb_ids:
+                    continue
+                    
+                title = item.get('title') if media_type == 'movie' else item.get('name')
+                release_date = item.get('release_date') if media_type == 'movie' else item.get('first_air_date')
+                
+                recommendations.append({
+                    "tmdb_id": tmdb_id,
+                    "title": title,
+                    "media_type": media_type,
+                    "poster_path": item.get('poster_path'),
+                    "release_date": release_date,
+                    "overview": item.get('overview', ''),
+                    "seed_title": None,
+                    "recommendation_type": "trending"
+                })
+                seen_recommendations.add((tmdb_id, media_type))
+
+        if not recommendations:
+            for item in MOCK_MEDIA:
+                tmdb_id = item['tmdb_id']
+                media_type = item['media_type']
+                if tmdb_id in user_tmdb_ids:
+                    continue
+                seed = seed_candidates.first()
+                seed_title = seed.title if seed else None
+                recommendations.append({
+                    "tmdb_id": tmdb_id,
+                    "title": item['title'],
+                    "media_type": media_type,
+                    "poster_path": item['poster_path'],
+                    "release_date": item['release_date'],
+                    "overview": item['overview'],
+                    "seed_title": seed_title,
+                    "recommendation_type": "personalized" if seed_title else "trending"
+                })
+
+        return Response(recommendations)

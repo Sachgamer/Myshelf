@@ -5,8 +5,9 @@ import { MediaItem, User } from './types';
 import { getItems, updateItem, deleteItem, login, register, logout, getCurrentUser, getProfile, updateProfile } from './api';
 import ShelfSection from '../components/ShelfSection';
 import SearchSection from '../components/SearchSection';
+import DiscoverySection from '../components/DiscoverySection';
 
-type TabType = 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search';
+type TabType = 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search' | 'discover';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -456,6 +457,16 @@ export default function Home() {
               💖 Souhaits
             </button>
             <button 
+              onClick={() => setActiveTab('discover')}
+              className={`nav-segment-btn ${activeTab === 'discover' ? 'active-watching' : ''}`}
+              style={{
+                background: activeTab === 'discover' ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                color: activeTab === 'discover' ? '#34d399' : 'var(--text-secondary)'
+              }}
+            >
+              ✨ Découverte
+            </button>
+            <button 
               onClick={() => setActiveTab('search')}
               className="btn btn-primary"
               style={{
@@ -525,7 +536,7 @@ export default function Home() {
       <main className="container" style={{ flexGrow: 1, padding: '2rem 2rem 4rem' }}>
         
         {/* Bannière Hero cinématique d'introduction */}
-        {activeTab !== 'search' && (
+        {activeTab !== 'search' && activeTab !== 'discover' && (
           <div className="hero-banner animate-fade-in">
             <div style={{ position: 'relative', zIndex: 1, maxWidth: '650px' }}>
               <span style={{ 
@@ -568,6 +579,9 @@ export default function Home() {
         ) : activeTab === 'search' ? (
           // Section de recherche TMDB
           <SearchSection onItemAdded={() => fetchItems(false)} />
+        ) : activeTab === 'discover' ? (
+          // Section de découverte et recommandations
+          <DiscoverySection onItemAdded={() => fetchItems(false)} />
         ) : (
           // Grille des étagères de la bibliothèque
           <ShelfSection 

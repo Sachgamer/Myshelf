@@ -1,4 +1,4 @@
-import { MediaItem, SearchResult, Episode, User } from './types';
+import { MediaItem, SearchResult, Episode, User, RecommendationItem } from './types';
 
 const getApiBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
@@ -258,5 +258,18 @@ export async function getPublicItems(username: string): Promise<MediaItem[]> {
   } catch (error: any) {
     console.error("API Error getPublicItems:", error);
     throw error;
+  }
+}
+
+export async function getRecommendations(): Promise<RecommendationItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/recommendations/`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur de récupération des recommandations");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error getRecommendations:", error);
+    return [];
   }
 }
