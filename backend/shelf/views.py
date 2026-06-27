@@ -551,17 +551,36 @@ class RecommendationView(APIView):
         user_items = MediaItem.objects.filter(user=request.user)
         user_tmdb_ids = set(user_items.values_list('tmdb_id', flat=True))
         
-        seed_candidates = user_items.order_by('-rating', '-updated_at')[:3]
+        page = request.query_params.get('page', '1')
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+
+        # Sélectionner jusqu'à 3 graines de recommandations de manière aléatoire
+        # Préférer les éléments notés >= 6, ou n'importe quel élément si aucun n'est bien noté
+        seed_candidates = []
+        high_rated = user_items.filter(rating__gte=6)
+        if not high_rated.exists():
+            high_rated = user_items
+            
+        candidate_list = list(high_rated)
+        if len(candidate_list) > 3:
+            seed_candidates = random.sample(candidate_list, 3)
+        else:
+            seed_candidates = candidate_list
         
         recommendations = []
         seen_recommendations = set()
         
         api_configured = bool(getattr(settings, 'TMDB_API_KEY', '') or getattr(settings, 'TMDB_API_READ_ACCESS_TOKEN', ''))
         
-        if api_configured and seed_candidates.exists():
+        if api_configured and seed_candidates:
             for seed in seed_candidates:
                 endpoint = f"{seed.media_type}/{seed.tmdb_id}/recommendations"
-                tmdb_data = query_tmdb(endpoint, {'language': 'fr-FR'})
+                tmdb_data = query_tmdb(endpoint, {'language': 'fr-FR', 'page': page})
                 
                 if tmdb_data and 'results' in tmdb_data:
                     count = 0
@@ -593,8 +612,8 @@ class RecommendationView(APIView):
                         count += 1
                         
         if len(recommendations) < 10:
-            trending_movies = query_tmdb('trending/movie/week', {'language': 'fr-FR'})
-            trending_tv = query_tmdb('trending/tv/week', {'language': 'fr-FR'})
+            trending_movies = query_tmdb('trending/movie/week', {'language': 'fr-FR', 'page': page})
+            trending_tv = query_tmdb('trending/tv/week', {'language': 'fr-FR', 'page': page})
             
             items_to_add = []
             if trending_movies and 'results' in trending_movies:
@@ -627,13 +646,14 @@ class RecommendationView(APIView):
                 seen_recommendations.add((tmdb_id, media_type))
 
         if not recommendations:
-            for item in MOCK_MEDIA:
+            start_index = ((page - 1) * 3) % len(MOCK_MEDIA)
+            cycled_mock = MOCK_MEDIA[start_index:] + MOCK_MEDIA[:start_index]
+            for item in cycled_mock:
                 tmdb_id = item['tmdb_id']
                 media_type = item['media_type']
                 if tmdb_id in user_tmdb_ids:
                     continue
-                seed = seed_candidates.first()
-                seed_title = seed.title if seed else None
+                seed_title = random.choice([s.title for s in seed_candidates]) if seed_candidates else None
                 recommendations.append({
                     "tmdb_id": tmdb_id,
                     "title": item['title'],

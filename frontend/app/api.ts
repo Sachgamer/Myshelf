@@ -261,9 +261,9 @@ export async function getPublicItems(username: string): Promise<MediaItem[]> {
   }
 }
 
-export async function getRecommendations(): Promise<RecommendationItem[]> {
+export async function getRecommendations(page = 1): Promise<RecommendationItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/recommendations/`, {
+    const res = await fetch(`${API_BASE_URL}/recommendations/?page=${page}`, {
       headers: getHeaders(false)
     });
     if (!res.ok) throw new Error("Erreur de récupération des recommandations");
