@@ -776,10 +776,13 @@ class TMDBExploreView(APIView):
                 results = MOCK_MEDIA[start:start+3]
             return Response(results)
 
-        # 3. Discover by director name / id
+        # 3. Discover by director/actor (person) name / id
         elif explore_type == 'director':
             director_name = request.query_params.get('director_name', '').strip()
             director_id = request.query_params.get('director_id')
+            role = request.query_params.get('role', 'crew') # 'crew' pour réalisateurs, 'cast' pour acteurs
+            if role not in ['crew', 'cast']:
+                role = 'crew'
             
             if not director_name and not director_id:
                 return Response({"error": "Le paramètre director_name ou director_id est obligatoire pour le type 'director'."}, status=status.HTTP_400_BAD_REQUEST)
@@ -795,10 +798,14 @@ class TMDBExploreView(APIView):
                     endpoint = "discover/movie"
                     params = {
                         'language': 'fr-FR',
-                        'with_crew': person_id,
                         'sort_by': 'popularity.desc',
                         'page': page
                     }
+                    if role == 'cast':
+                        params['with_cast'] = person_id
+                    else:
+                        params['with_crew'] = person_id
+
                     tmdb_data = query_tmdb(endpoint, params)
                     if tmdb_data and 'results' in tmdb_data:
                         formatted_results = []
@@ -817,6 +824,10 @@ class TMDBExploreView(APIView):
             lower_name = director_name.lower()
             if "nolan" in lower_name or director_id == '525':
                 results = [m for m in MOCK_MEDIA if m['tmdb_id'] in [27205, 157336]]
+            elif "di caprio" in lower_name or "dicaprio" in lower_name or director_id == '6193':
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] in [27205, 157336]]
+            elif "pitt" in lower_name or director_id == '287':
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] == 27205]
             elif "wachowski" in lower_name or "matrix" in lower_name:
                 results = [m for m in MOCK_MEDIA if m['tmdb_id'] == 603]
             elif "gilligan" in lower_name or "breaking" in lower_name:

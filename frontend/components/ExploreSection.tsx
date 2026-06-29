@@ -16,8 +16,18 @@ const FAMOUS_DIRECTORS = [
   { name: 'Hayao Miyazaki', id: 608, icon: '🧸' }
 ];
 
+// Popular actors list with their TMDB cast ID or exact name
+const FAMOUS_ACTORS = [
+  { name: 'Leonardo DiCaprio', id: 6193, icon: '❄️' },
+  { name: 'Brad Pitt', id: 287, icon: '🕶️' },
+  { name: 'Johnny Depp', id: 85, icon: '🏴‍☠️' },
+  { name: 'Scarlett Johansson', id: 1245, icon: '🕷️' },
+  { name: 'Margot Robbie', id: 234352, icon: '💖' },
+  { name: 'Christian Bale', id: 3896, icon: '🦇' }
+];
+
 export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
-  // Main tabs: 'genre' or 'director'
+  // Main tabs: 'genre' or 'director' (acting as 'artist' now)
   const [activeTab, setActiveTab] = useState<'genre' | 'director'>('genre');
   
   // State for Genres Exploration
@@ -25,8 +35,9 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
   const [genres, setGenres] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
   
-  // State for Director Exploration
+  // State for Artist Exploration
   const [directorQuery, setDirectorQuery] = useState('');
+  const [artistRole, setArtistRole] = useState<'crew' | 'cast'>('crew');
   
   // Results & Loading
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -59,7 +70,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
         setLoading(true);
         const genreList = await getExploreGenres(mediaType);
         setGenres(genreList);
-        // Default to first genre if available
         if (genreList.length > 0) {
           setSelectedGenreId(genreList[0].id);
         } else {
@@ -70,7 +80,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
       };
       loadGenres();
     } else {
-      // Clear results and reset page when switching to director tab
       setResults([]);
       setPage(1);
     }
@@ -84,31 +93,37 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
         await fetchLibrary();
         const data = await discoverMedia(mediaType, selectedGenreId, page);
         setResults(data);
-        setHasMore(data.length >= 6); // Simple heuristic: if we got fewer than 6 items, there might not be another full page
+        setHasMore(data.length >= 6);
         setLoading(false);
       };
       loadGenreData();
     }
   }, [selectedGenreId, page, mediaType, activeTab]);
 
-  // Handle director search submit
-  const handleDirectorSearch = async (e?: React.FormEvent, searchName: string = directorQuery, searchPage: number = 1) => {
+  // Handle artist search submit
+  const handleDirectorSearch = async (
+    e?: React.FormEvent, 
+    searchName: string = directorQuery, 
+    searchPage: number = 1,
+    role: 'crew' | 'cast' = artistRole
+  ) => {
     if (e) e.preventDefault();
     if (!searchName.trim()) return;
 
     setLoading(true);
     setPage(searchPage);
     await fetchLibrary();
-    const data = await discoverByDirector(searchName, searchPage);
+    const data = await discoverByDirector(searchName, searchPage, role);
     setResults(data);
-    setHasMore(data.length >= 4); // Crew results can be sparse
+    setHasMore(data.length >= 4);
     setLoading(false);
   };
 
-  // Quick select a director
-  const handleDirectorSelect = (name: string) => {
+  // Quick select an artist
+  const handleArtistSelect = (name: string, role: 'crew' | 'cast') => {
     setDirectorQuery(name);
-    handleDirectorSearch(undefined, name, 1);
+    setArtistRole(role);
+    handleDirectorSearch(undefined, name, 1, role);
   };
 
   // Change page
@@ -116,7 +131,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     if (newPage < 1) return;
     setPage(newPage);
     if (activeTab === 'director') {
-      handleDirectorSearch(undefined, directorQuery, newPage);
+      handleDirectorSearch(undefined, directorQuery, newPage, artistRole);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -144,7 +159,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     setAddingId(null);
   };
 
-  // Helper mapping TMDB genres to funny emojis
   const getGenreEmoji = (name: string) => {
     const lower = name.toLowerCase();
     if (lower.includes('action')) return '🎬';
@@ -156,7 +170,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     if (lower.includes('drame')) return '🎭';
     if (lower.includes('famille')) return '🏡';
     if (lower.includes('fantastique') || lower.includes('fantasy')) return '🦄';
-    if (lower.includes('histoire')) return '🏺';
+    if (lower.includes(' histoire')) return '🏺';
     if (lower.includes('horreur')) return '👻';
     if (lower.includes('musique')) return '🎵';
     if (lower.includes('mystère')) return '🔍';
@@ -178,7 +192,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
             Explorer le Catalogue
           </h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-            Découvrez des pépites par genre ou en recherchant vos réalisateurs fétiches.
+            Découvrez des pépites par genre ou en recherchant des réalisateurs et acteurs.
           </p>
         </div>
 
@@ -225,7 +239,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               boxShadow: activeTab === 'director' ? '0 4px 15px rgba(139, 92, 246, 0.4)' : 'none'
             }}
           >
-            🎬 Par Réalisateur
+            🎬 Par Artiste
           </button>
         </div>
       </div>
@@ -318,14 +332,58 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
         </div>
       )}
 
-      {/* DIRECTOR EXPLORATION HEADER FILTERS */}
+      {/* ARTIST EXPLORATION HEADER FILTERS */}
       {activeTab === 'director' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2.5rem' }}>
-          {/* Director search form */}
-          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery, 1)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0 auto' }}>
+          
+          {/* Artist Role Toggle */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '8px' }}>Rechercher par :</span>
+            <button
+              onClick={() => {
+                setArtistRole('crew');
+                setResults([]);
+                setPage(1);
+              }}
+              style={{
+                padding: '0.4rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: artistRole === 'crew' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255,255,255,0.03)',
+                border: artistRole === 'crew' ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid rgba(255,255,255,0.06)',
+                color: artistRole === 'crew' ? '#c084fc' : '#fff'
+              }}
+            >
+              🎬 Réalisateur
+            </button>
+            <button
+              onClick={() => {
+                setArtistRole('cast');
+                setResults([]);
+                setPage(1);
+              }}
+              style={{
+                padding: '0.4rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: artistRole === 'cast' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255,255,255,0.03)',
+                border: artistRole === 'cast' ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(255,255,255,0.06)',
+                color: artistRole === 'cast' ? '#f472b6' : '#fff'
+              }}
+            >
+              🎭 Acteur / Actrice
+            </button>
+          </div>
+
+          {/* Artist search form */}
+          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery, 1, artistRole)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto' }}>
             <input
               type="text"
-              placeholder="Rechercher un réalisateur (ex: Christopher Nolan, Denis Villeneuve...)"
+              placeholder={artistRole === 'crew' ? "Rechercher un réalisateur (ex: Christopher Nolan...)" : "Rechercher un acteur (ex: Leonardo DiCaprio...)"}
               value={directorQuery}
               onChange={(e) => setDirectorQuery(e.target.value)}
               className="form-input"
@@ -336,33 +394,60 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
             </button>
           </form>
 
-          {/* Quick select tags for cult directors */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Réalisateurs Cultes :</span>
-            {FAMOUS_DIRECTORS.map((director) => (
-              <button
-                key={director.id}
-                onClick={() => handleDirectorSelect(director.name)}
-                style={{
-                  padding: '0.35rem 0.8rem',
-                  borderRadius: '20px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s ease'
-                }}
-                className="director-tag-btn"
-              >
-                <span>{director.icon}</span>
-                <span>{director.name}</span>
-              </button>
-            ))}
+          {/* Quick select tags for cult directors / actors */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center', maxWidth: '800px', margin: '0 auto' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Suggestions :</span>
+            {artistRole === 'crew' ? (
+              FAMOUS_DIRECTORS.map((director) => (
+                <button
+                  key={director.id}
+                  onClick={() => handleArtistSelect(director.name, 'crew')}
+                  style={{
+                    padding: '0.35rem 0.8rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="director-tag-btn"
+                >
+                  <span>{director.icon}</span>
+                  <span>{director.name}</span>
+                </button>
+              ))
+            ) : (
+              FAMOUS_ACTORS.map((actor) => (
+                <button
+                  key={actor.id}
+                  onClick={() => handleArtistSelect(actor.name, 'cast')}
+                  style={{
+                    padding: '0.35rem 0.8rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="director-tag-btn"
+                >
+                  <span>{actor.icon}</span>
+                  <span>{actor.name}</span>
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -390,7 +475,9 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             {activeTab === 'genre' 
               ? "Sélectionnez un genre de films ou séries ci-dessus pour découvrir le catalogue de titres."
-              : "Tapez le nom d'un réalisateur ci-dessus ou cliquez sur un des réalisateurs cultes suggérés pour explorer son œuvre."}
+              : artistRole === 'crew' 
+                ? "Tapez le nom d'un réalisateur ci-dessus ou cliquez sur un des réalisateurs cultes suggérés pour explorer son œuvre."
+                : "Tapez le nom d'un acteur ou d'une actrice ci-dessus ou cliquez sur une suggestion pour explorer sa filmographie."}
           </p>
         </div>
       )}
@@ -404,7 +491,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
             gap: '24px'
           }}>
             {results.map((media) => {
-              // Ensure media type defaults if not provided in search item
               const itemMediaType = media.media_type || (activeTab === 'genre' ? mediaType : 'movie');
               const libraryItem = getLibraryStatus(media.tmdb_id, itemMediaType);
               const releaseYear = media.release_date ? new Date(media.release_date).getFullYear() : 'N/A';
@@ -416,7 +502,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               const idKey = `${itemMediaType}-${media.tmdb_id}`;
               const isHovered = hoveredId === idKey;
 
-              // Class based on item category
               let statusClass = '';
               if (libraryItem) {
                 if (libraryItem.watching) statusClass = 'card-watching';

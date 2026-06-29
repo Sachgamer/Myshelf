@@ -301,12 +301,12 @@ export async function discoverMedia(mediaType: 'movie' | 'tv', genreId: number, 
   }
 }
 
-export async function discoverByDirector(name: string, page = 1): Promise<SearchResult[]> {
+export async function discoverByDirector(name: string, page = 1, role: 'crew' | 'cast' = 'crew'): Promise<SearchResult[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/explore/?type=director&director_name=${encodeURIComponent(name)}&page=${page}`, {
+    const res = await fetch(`${API_BASE_URL}/explore/?type=director&director_name=${encodeURIComponent(name)}&page=${page}&role=${role}`, {
       headers: getHeaders(false)
     });
-    if (!res.ok) throw new Error("Erreur de découverte par réalisateur");
+    if (!res.ok) throw new Error("Erreur de découverte par artiste");
     return await res.json();
   } catch (error) {
     console.error("API Error discoverByDirector:", error);
