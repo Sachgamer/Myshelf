@@ -673,3 +673,158 @@ class RecommendationView(APIView):
                 })
 
         return Response(recommendations)
+
+
+class TMDBExploreView(APIView):
+    """
+    View to explore media from TMDB by genre, director, or popular list.
+    Supports mock data fallback if API is not configured.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        explore_type = request.query_params.get('type', 'genres')
+        media_type = request.query_params.get('media_type', 'movie')
+        if media_type not in ['movie', 'tv']:
+            media_type = 'movie'
+            
+        page = request.query_params.get('page', '1')
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+
+        api_configured = bool(getattr(settings, 'TMDB_API_KEY', '') or getattr(settings, 'TMDB_API_READ_ACCESS_TOKEN', ''))
+
+        # 1. Fetch genre list
+        if explore_type == 'genres':
+            if api_configured:
+                endpoint = f"genre/{media_type}/list"
+                tmdb_data = query_tmdb(endpoint, {'language': 'fr-FR'})
+                if tmdb_data and 'genres' in tmdb_data:
+                    return Response(tmdb_data)
+            
+            # Mock fallback for genres
+            mock_genres = [
+                {"id": 28, "name": "Action"},
+                {"id": 12, "name": "Aventure"},
+                {"id": 16, "name": "Animation"},
+                {"id": 35, "name": "Comédie"},
+                {"id": 80, "name": "Crime / Polar"},
+                {"id": 99, "name": "Documentaire"},
+                {"id": 18, "name": "Drame"},
+                {"id": 10751, "name": "Famille"},
+                {"id": 14, "name": "Fantastique"},
+                {"id": 36, "name": "Histoire"},
+                {"id": 27, "name": "Horreur"},
+                {"id": 10402, "name": "Musique"},
+                {"id": 9648, "name": "Mystère"},
+                {"id": 10749, "name": "Romance"},
+                {"id": 878, "name": "Science-Fiction"},
+                {"id": 10770, "name": "Téléfilm"},
+                {"id": 53, "name": "Thriller / Suspense"},
+                {"id": 10752, "name": "Guerre"},
+                {"id": 37, "name": "Western"}
+            ]
+            return Response({"genres": mock_genres})
+
+        # 2. Discover by genre ID
+        elif explore_type == 'discover':
+            genre_id = request.query_params.get('genre_id')
+            if not genre_id:
+                return Response({"error": "Le paramètre genre_id est obligatoire pour le type 'discover'."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if api_configured:
+                endpoint = f"discover/{media_type}"
+                params = {
+                    'language': 'fr-FR',
+                    'with_genres': genre_id,
+                    'sort_by': 'popularity.desc',
+                    'page': page
+                }
+                tmdb_data = query_tmdb(endpoint, params)
+                if tmdb_data and 'results' in tmdb_data:
+                    formatted_results = []
+                    for item in tmdb_data['results']:
+                        tmdb_id = item.get('id')
+                        title = item.get('title') if media_type == 'movie' else item.get('name')
+                        release_date = item.get('release_date') if media_type == 'movie' else item.get('first_air_date')
+                        formatted_results.append({
+                            "tmdb_id": tmdb_id,
+                            "title": title,
+                            "media_type": media_type,
+                            "poster_path": item.get('poster_path'),
+                            "release_date": release_date,
+                            "overview": item.get('overview', '')
+                        })
+                    return Response(formatted_results)
+
+            try:
+                gid = int(genre_id)
+            except ValueError:
+                gid = 28
+
+            results = []
+            if gid == 878:
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] in [27205, 157336, 603]]
+            elif gid in [28, 12]:
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] in [603, 1402]]
+            else:
+                start = ((page - 1) * 2) % len(MOCK_MEDIA)
+                results = MOCK_MEDIA[start:start+3]
+            return Response(results)
+
+        # 3. Discover by director name / id
+        elif explore_type == 'director':
+            director_name = request.query_params.get('director_name', '').strip()
+            director_id = request.query_params.get('director_id')
+            
+            if not director_name and not director_id:
+                return Response({"error": "Le paramètre director_name ou director_id est obligatoire pour le type 'director'."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if api_configured:
+                person_id = director_id
+                if not person_id and director_name:
+                    search_data = query_tmdb('search/person', {'query': director_name, 'language': 'fr-FR'})
+                    if search_data and search_data.get('results'):
+                        person_id = search_data['results'][0].get('id')
+
+                if person_id:
+                    endpoint = "discover/movie"
+                    params = {
+                        'language': 'fr-FR',
+                        'with_crew': person_id,
+                        'sort_by': 'popularity.desc',
+                        'page': page
+                    }
+                    tmdb_data = query_tmdb(endpoint, params)
+                    if tmdb_data and 'results' in tmdb_data:
+                        formatted_results = []
+                        for item in tmdb_data['results']:
+                            formatted_results.append({
+                                "tmdb_id": item.get('id'),
+                                "title": item.get('title'),
+                                "media_type": "movie",
+                                "poster_path": item.get('poster_path'),
+                                "release_date": item.get('release_date'),
+                                "overview": item.get('overview', '')
+                            })
+                        return Response(formatted_results)
+
+            results = []
+            lower_name = director_name.lower()
+            if "nolan" in lower_name or director_id == '525':
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] in [27205, 157336]]
+            elif "wachowski" in lower_name or "matrix" in lower_name:
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] == 603]
+            elif "gilligan" in lower_name or "breaking" in lower_name:
+                results = [m for m in MOCK_MEDIA if m['tmdb_id'] == 1396]
+            else:
+                start = ((page - 1) * 2) % len(MOCK_MEDIA)
+                results = MOCK_MEDIA[start:start+2]
+            return Response(results)
+
+        return Response({"error": "Type d'exploration non pris en charge."}, status=status.HTTP_400_BAD_REQUEST)
+

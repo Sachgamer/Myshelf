@@ -1,12 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MediaItemViewSet, TMDBSearchView, RegisterView, LoginView, LogoutView, UserView, UserProfileView, PublicShelfView, RecommendationView
+from .views import MediaItemViewSet, TMDBSearchView, RegisterView, LoginView, LogoutView, UserView, UserProfileView, PublicShelfView, RecommendationView, TMDBExploreView
 
 router = DefaultRouter()
 router.register(r'items', MediaItemViewSet, basename='mediaitem')
 
 urlpatterns = [
     path('search/', TMDBSearchView.as_view(), name='tmdb-search'),
+    path('explore/', TMDBExploreView.as_view(), name='explore'),
     path('recommendations/', RecommendationView.as_view(), name='recommendations'),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),

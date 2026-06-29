@@ -6,8 +6,9 @@ import { getItems, updateItem, deleteItem, login, register, logout, getCurrentUs
 import ShelfSection from '../components/ShelfSection';
 import SearchSection from '../components/SearchSection';
 import DiscoverySection from '../components/DiscoverySection';
+import ExploreSection from '../components/ExploreSection';
 
-type TabType = 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search' | 'discover';
+type TabType = 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search' | 'discover' | 'explore';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -467,6 +468,17 @@ export default function Home() {
               ✨ Découverte
             </button>
             <button 
+              onClick={() => setActiveTab('explore')}
+              className={`nav-segment-btn ${activeTab === 'explore' ? 'active-watching' : ''}`}
+              style={{
+                background: activeTab === 'explore' ? 'rgba(168, 85, 247, 0.12)' : 'transparent',
+                color: activeTab === 'explore' ? '#c084fc' : 'var(--text-secondary)',
+                marginRight: '6px'
+              }}
+            >
+              🗺️ Explorer
+            </button>
+            <button 
               onClick={() => setActiveTab('search')}
               className="btn btn-primary"
               style={{
@@ -536,7 +548,7 @@ export default function Home() {
       <main className="container" style={{ flexGrow: 1, padding: '2rem 2rem 4rem' }}>
         
         {/* Bannière Hero cinématique d'introduction */}
-        {activeTab !== 'search' && activeTab !== 'discover' && (
+        {activeTab !== 'search' && activeTab !== 'discover' && activeTab !== 'explore' && (
           <div className="hero-banner animate-fade-in">
             <div style={{ position: 'relative', zIndex: 1, maxWidth: '650px' }}>
               <span style={{ 
@@ -582,6 +594,9 @@ export default function Home() {
         ) : activeTab === 'discover' ? (
           // Section de découverte et recommandations
           <DiscoverySection onItemAdded={() => fetchItems(false)} />
+        ) : activeTab === 'explore' ? (
+          // Section d'exploration par genre et réalisateur
+          <ExploreSection onItemAdded={() => fetchItems(false)} />
         ) : (
           // Grille des étagères de la bibliothèque
           <ShelfSection 

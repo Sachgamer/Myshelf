@@ -273,3 +273,43 @@ export async function getRecommendations(page = 1): Promise<RecommendationItem[]
     return [];
   }
 }
+
+export async function getExploreGenres(mediaType: 'movie' | 'tv'): Promise<Array<{ id: number; name: string }>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/explore/?type=genres&media_type=${mediaType}`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur de récupération des genres");
+    const data = await res.json();
+    return data.genres || [];
+  } catch (error) {
+    console.error("API Error getExploreGenres:", error);
+    return [];
+  }
+}
+
+export async function discoverMedia(mediaType: 'movie' | 'tv', genreId: number, page = 1): Promise<SearchResult[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/explore/?type=discover&media_type=${mediaType}&genre_id=${genreId}&page=${page}`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur de découverte");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error discoverMedia:", error);
+    return [];
+  }
+}
+
+export async function discoverByDirector(name: string, page = 1): Promise<SearchResult[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/explore/?type=director&director_name=${encodeURIComponent(name)}&page=${page}`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur de découverte par réalisateur");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error discoverByDirector:", error);
+    return [];
+  }
+}
