@@ -40,6 +40,11 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
   const [suggestedArtists, setSuggestedArtists] = useState<Array<{ id: number; name: string; known_for_department: string }>>([]);
   const [selectedArtist, setSelectedArtist] = useState<{ id: number; name: string } | null>(null);
   
+  // Autocomplete Dropdown State
+  const [suggestions, setSuggestions] = useState<Array<{ id: number; name: string; known_for_department: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [blurTimeout, setBlurTimeout] = useState<NodeJS.Timeout | null>(null);
+
   // Results & Loading
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,6 +107,26 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     }
   }, [selectedGenreId, page, mediaType, activeTab]);
 
+  // Debounced Autocomplete for Artist Input
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (directorQuery.trim().length >= 2) {
+        const people = await searchPeople(directorQuery);
+        // Filter suggestions according to selected role to make it cleaner
+        const filtered = people.filter(p => 
+          (artistRole === 'crew' && p.known_for_department === 'Directing') ||
+          (artistRole === 'cast' && p.known_for_department === 'Acting')
+        );
+        // Fallback to all people if no match with role
+        setSuggestions(filtered.length > 0 ? filtered.slice(0, 5) : people.slice(0, 5));
+      } else {
+        setSuggestions([]);
+      }
+    }, 250);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [directorQuery, artistRole]);
+
   // Handle artist search submit (First searches for person matches)
   const handleDirectorSearch = async (e?: React.FormEvent, queryText: string = directorQuery) => {
     if (e) e.preventDefault();
@@ -110,6 +135,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     setLoading(true);
     setResults([]);
     setSelectedArtist(null);
+    setSuggestedArtists([]);
+    setShowSuggestions(false);
     setPage(1);
     
     // Search for people first to resolve spelling/fuzzy matching
@@ -138,6 +165,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     setPage(1);
     setSelectedArtist({ id, name });
     setSuggestedArtists([]);
+    setSuggestions([]);
+    setShowSuggestions(false);
     
     await fetchLibrary();
     const data = await discoverByDirector(name, 1, role, id);
@@ -151,6 +180,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     setSelectedArtist(artist);
     setLoading(true);
     setPage(1);
+    setSuggestedArtists([]);
     await fetchLibrary();
     const data = await discoverByDirector(artist.name, 1, artistRole, artist.id);
     setResults(data);
@@ -220,6 +250,18 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     if (lower.includes('guerre')) return '🎖️';
     if (lower.includes('western')) return '🤠';
     return '🎞️';
+  };
+
+  const handleBlur = () => {
+    const timeout = setTimeout(() => {
+      setShowSuggestions(false);
+    }, 250);
+    setBlurTimeout(timeout);
+  };
+
+  const handleFocus = () => {
+    if (blurTimeout) clearTimeout(blurTimeout);
+    if (suggestions.length > 0) setShowSuggestions(true);
   };
 
   return (
@@ -384,6 +426,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
                 setArtistRole('crew');
                 setResults([]);
                 setSuggestedArtists([]);
+                setSuggestions([]);
+                setShowSuggestions(false);
                 setSelectedArtist(null);
                 setPage(1);
               }}
@@ -405,6 +449,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
                 setArtistRole('cast');
                 setResults([]);
                 setSuggestedArtists([]);
+                setSuggestions([]);
+                setShowSuggestions(false);
                 setSelectedArtist(null);
                 setPage(1);
               }}
@@ -423,16 +469,74 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
             </button>
           </div>
 
-          {/* Artist search form */}
-          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto' }}>
-            <input
-              type="text"
-              placeholder={artistRole === 'crew' ? "Rechercher un réalisateur (ex: Christopher Nolan...)" : "Rechercher un acteur (ex: Leonardo DiCaprio...)"}
-              value={directorQuery}
-              onChange={(e) => setDirectorQuery(e.target.value)}
-              className="form-input"
-              style={{ flexGrow: 1 }}
-            />
+          {/* Artist search form with drop-down autocomplete */}
+          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto', position: 'relative' }}>
+            <div style={{ position: 'relative', flexGrow: 1 }}>
+              <input
+                type="text"
+                placeholder={artistRole === 'crew' ? "Rechercher un réalisateur (ex: Christopher Nolan...)" : "Rechercher un acteur (ex: Leonardo DiCaprio...)"}
+                value={directorQuery}
+                onChange={(e) => {
+                  setDirectorQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+                className="form-input"
+                style={{ width: '100%' }}
+              />
+              {/* Autocomplete drop-down list */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div 
+                  className="glass-panel animate-fade-in"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    width: '100%',
+                    background: 'rgba(15, 12, 25, 0.98)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '12px',
+                    marginTop: '6px',
+                    zIndex: 1000,
+                    boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
+                    maxHeight: '320px',
+                    overflowY: 'auto',
+                    padding: '0.4rem 0'
+                  }}
+                >
+                  {suggestions.map((artist) => (
+                    <div
+                      key={artist.id}
+                      onClick={() => {
+                        setDirectorQuery(artist.name);
+                        setSuggestions([]);
+                        setShowSuggestions(false);
+                        handleArtistSelect(artist.name, artist.id, artist.known_for_department === 'Directing' ? 'crew' : 'cast');
+                      }}
+                      style={{
+                        padding: '0.6rem 1.25rem',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        color: '#fff',
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                      className="suggestion-item"
+                    >
+                      <span>👤</span>
+                      <span>{artist.name}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                        {artist.known_for_department === 'Directing' ? 'Réalisateur' : 'Acteur'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <button type="submit" className="btn btn-primary" style={{ padding: '0 1.5rem', borderRadius: '10px', fontWeight: 700 }}>
               Rechercher
             </button>

@@ -132,6 +132,41 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 12;
 
+  // Autocomplete suggestions states for internal library search
+  const [suggestions, setSuggestions] = useState<MediaItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [blurTimeout, setBlurTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Debounced search autocomplete
+  useEffect(() => {
+    if (searchQuery.trim().length >= 2) {
+      const q = searchQuery.toLowerCase();
+      const matches = items.filter(item => 
+        item.title.toLowerCase().includes(q) &&
+        (activeTab === 'all' || 
+         (activeTab === 'watching' && item.watching) ||
+         (activeTab === 'watched' && item.watched) ||
+         (activeTab === 'dvd_owned' && item.dvd_owned) ||
+         (activeTab === 'dvd_wishlist' && item.dvd_wishlist))
+      );
+      setSuggestions(matches.slice(0, 5));
+    } else {
+      setSuggestions([]);
+    }
+  }, [searchQuery, items, activeTab]);
+
+  const handleBlur = () => {
+    const timeout = setTimeout(() => {
+      setShowSuggestions(false);
+    }, 250);
+    setBlurTimeout(timeout);
+  };
+
+  const handleFocus = () => {
+    if (blurTimeout) clearTimeout(blurTimeout);
+    if (suggestions.length > 0) setShowSuggestions(true);
+  };
+
   // Réinitialiser la page courante si les filtres ou l'onglet changent
   useEffect(() => {
     setCurrentPage(1);
@@ -372,18 +407,28 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
               type="text"
               placeholder="Rechercher sur mes étagères..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
               className="form-input"
               style={{
                 paddingLeft: '36px',
                 fontSize: '0.9rem',
                 borderRadius: '10px',
-                background: 'rgba(255,255,255,0.02)'
+                background: 'rgba(255,255,255,0.02)',
+                width: '100%'
               }}
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                }}
                 style={{
                   position: 'absolute',
                   right: '12px',
@@ -391,11 +436,65 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
                   border: 'none',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  fontSize: '0.95rem'
+                  fontSize: '0.95rem',
+                  zIndex: 10
                 }}
               >
                 ✕
               </button>
+            )}
+
+            {/* Dropdown list for library search suggestions */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div 
+                className="glass-panel animate-fade-in"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  width: '100%',
+                  background: 'rgba(15, 12, 25, 0.98)',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: '12px',
+                  marginTop: '6px',
+                  zIndex: 1000,
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
+                  maxHeight: '320px',
+                  overflowY: 'auto',
+                  padding: '0.4rem 0'
+                }}
+              >
+                {suggestions.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSearchQuery(item.title);
+                      setSuggestions([]);
+                      setShowSuggestions(false);
+                    }}
+                    style={{
+                      padding: '0.6rem 1.25rem',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      color: '#fff',
+                      borderBottom: '1px solid rgba(255,255,255,0.03)',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    className="suggestion-item"
+                  >
+                    <span>{item.media_type === 'movie' ? '🎥' : '📺'}</span>
+                    <span>{item.title}</span>
+                    {item.rating && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--rating-color)', marginLeft: 'auto' }}>
+                        ★ {item.rating}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
