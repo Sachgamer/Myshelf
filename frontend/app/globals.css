@@ -288,6 +288,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 15px 35px rgba(236, 72, 153, 0.12) !important;
 }
 
+.card-watchlist {
+  box-shadow: 0 10px 30px rgba(249, 115, 22, 0.04);
+}
+.card-watchlist:hover {
+  border-color: rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 15px 35px rgba(249, 115, 22, 0.12) !important;
+}
+
 /* Hide scrollbars but keep scrolling */
 .season-tabs::-webkit-scrollbar {
   display: none;

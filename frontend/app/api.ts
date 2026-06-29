@@ -83,7 +83,7 @@ export async function getItems(filters?: {
 export async function addItem(
   tmdbId: number,
   mediaType: 'movie' | 'tv',
-  category: 'watched' | 'watching' | 'dvd_owned' | 'dvd_wishlist',
+  category: 'watched' | 'watching' | 'dvd_owned' | 'dvd_wishlist' | 'watchlist',
   rating?: number
 ): Promise<MediaItem | null> {
   try {

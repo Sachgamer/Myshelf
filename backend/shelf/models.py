@@ -27,6 +27,7 @@ class MediaItem(models.Model):
     rating = models.IntegerField(null=True, blank=True)  # rating out of 10
     dvd_owned = models.BooleanField(default=False)
     dvd_wishlist = models.BooleanField(default=False)
+    watchlist = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -34,8 +35,14 @@ class MediaItem(models.Model):
     def save(self, *args, **kwargs):
         if self.watched:
             self.watching = False
+            self.watchlist = False
         if self.watching:
             self.watched = False
+            self.watchlist = False
+            self.rating = None
+        if self.watchlist:
+            self.watched = False
+            self.watching = False
             self.rating = None
         super().save(*args, **kwargs)
 

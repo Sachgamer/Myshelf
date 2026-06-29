@@ -114,8 +114,19 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
     const nextState = !item.watching;
     onUpdate(item.id, { 
       watching: nextState,
-      // Si configuré comme "En cours", on retire le statut "Déjà vu"
+      // Si configuré comme "En cours", on retire le statut "Déjà vu" et la watchlist
       watched: nextState ? false : item.watched,
+      watchlist: nextState ? false : item.watchlist,
+      rating: nextState ? null : item.rating
+    });
+  };
+
+  const toggleWatchlist = () => {
+    const nextState = !item.watchlist;
+    onUpdate(item.id, {
+      watchlist: nextState,
+      watched: nextState ? false : item.watched,
+      watching: nextState ? false : item.watching,
       rating: nextState ? null : item.rating
     });
   };
@@ -123,6 +134,7 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
   // Déterminer la classe de statut pour appliquer les styles néons définis dans globals.css
   let statusClass = '';
   if (item.watching) statusClass = 'card-watching';
+  else if (item.watchlist) statusClass = 'card-watchlist';
   else if (item.watched) statusClass = 'card-watched';
   else if (item.dvd_owned) statusClass = 'card-dvd_owned';
   else if (item.dvd_wishlist) statusClass = 'card-dvd_wishlist';
@@ -586,6 +598,19 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
               📺 En cours (S{item.current_season || 1}{item.total_seasons ? `/${item.total_seasons}` : ''} E{item.current_episode || 0}{maxEpisodesForCurrentSeason ? `/${maxEpisodesForCurrentSeason}` : ''})
             </span>
           )}
+          {item.watchlist && (
+            <span style={{
+              padding: '0.15rem 0.45rem',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              background: 'rgba(249, 115, 22, 0.12)',
+              border: '1px solid rgba(249, 115, 22, 0.25)',
+              color: '#f97316'
+            }}>
+              🍿 À regarder
+            </span>
+          )}
           {item.dvd_owned && (
             <span style={{
               padding: '0.15rem 0.45rem',
@@ -669,6 +694,27 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
                   📺
                 </button>
               )}
+
+              {/* Watchlist toggle button */}
+              <button
+                onClick={toggleWatchlist}
+                style={{
+                  background: item.watchlist ? '#f97316' : 'rgba(255,255,255,0.05)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: item.watchlist ? '#fff' : 'var(--text-secondary)'
+                }}
+                title={item.watchlist ? "Retirer de la watchlist" : "Ajouter à la watchlist"}
+              >
+                🍿
+              </button>
 
               {/* DVD possédé */}
               <button

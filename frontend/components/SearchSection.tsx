@@ -79,7 +79,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
   const handleAdd = async (
     tmdbId: number, 
     mediaType: 'movie' | 'tv', 
-    category: 'watched' | 'watching' | 'dvd_owned' | 'dvd_wishlist',
+    category: 'watched' | 'watching' | 'dvd_owned' | 'dvd_wishlist' | 'watchlist',
     rating?: number
   ) => {
     const addStateKey = `${tmdbId}-${category}`;
@@ -224,6 +224,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
             let statusClass = '';
             if (libraryItem) {
               if (libraryItem.watching) statusClass = 'card-watching';
+              else if (libraryItem.watchlist) statusClass = 'card-watchlist';
               else if (libraryItem.watched) statusClass = 'card-watched';
               else if (libraryItem.dvd_owned) statusClass = 'card-dvd_owned';
               else if (libraryItem.dvd_wishlist) statusClass = 'card-dvd_wishlist';
@@ -420,6 +421,11 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                             })()})
                           </span>
                         )}
+                        {libraryItem.watchlist && (
+                          <span style={{ fontSize: '0.75rem', color: '#f97316', fontWeight: 600 }}>
+                            🍿 À regarder
+                          </span>
+                        )}
                         {libraryItem.dvd_owned && (
                           <span style={{ fontSize: '0.75rem', color: 'var(--dvd-color)', fontWeight: 600 }}>
                             📀 DVD
@@ -468,6 +474,28 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
                             : '📺 Suivre la série'}
                       </button>
                     )}
+
+                    {/* Bouton ajouter à la watchlist */}
+                    <button
+                      onClick={() => handleAdd(media.tmdb_id, media.media_type, 'watchlist')}
+                      disabled={addingId !== null || libraryItem?.watchlist || libraryItem?.watched || libraryItem?.watching}
+                      className="btn"
+                      style={{
+                        padding: '0.45rem',
+                        fontSize: '0.8rem',
+                        background: libraryItem?.watchlist ? 'rgba(249, 115, 22, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: libraryItem?.watchlist ? '#f97316' : '#fff',
+                        border: libraryItem?.watchlist ? '1px solid rgba(249, 115, 22, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'flex-start',
+                        cursor: (libraryItem?.watchlist || libraryItem?.watched || libraryItem?.watching) ? 'default' : 'pointer'
+                      }}
+                    >
+                      {addingId === `${media.tmdb_id}-watchlist` 
+                        ? 'Ajout...' 
+                        : libraryItem?.watchlist 
+                          ? '✓ Dans la Watchlist' 
+                          : '🍿 Ajouter à la Watchlist'}
+                    </button>
 
                     {/* Bouton marquer comme vu */}
                     <button

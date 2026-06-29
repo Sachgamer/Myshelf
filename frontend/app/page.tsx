@@ -7,8 +7,9 @@ import ShelfSection from '../components/ShelfSection';
 import SearchSection from '../components/SearchSection';
 import DiscoverySection from '../components/DiscoverySection';
 import ExploreSection from '../components/ExploreSection';
+import WatchlistSection from '../components/WatchlistSection';
 
-type TabType = 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search' | 'discover' | 'explore';
+type TabType = 'all' | 'watchlist' | 'watched' | 'dvd_owned' | 'dvd_wishlist' | 'search' | 'discover' | 'explore';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -170,9 +171,18 @@ export default function Home() {
           if (data.dvd_wishlist === true) updated.dvd_owned = false;
           if (data.watching === true) {
             updated.watched = false;
+            updated.watchlist = false;
             updated.rating = null;
           }
-          if (data.watched === true) updated.watching = false;
+          if (data.watched === true) {
+            updated.watching = false;
+            updated.watchlist = false;
+          }
+          if (data.watchlist === true) {
+            updated.watched = false;
+            updated.watching = false;
+            updated.rating = null;
+          }
           return updated;
         }
         return item;
@@ -434,10 +444,14 @@ export default function Home() {
               📚 Bibliothèque
             </button>
             <button 
-              onClick={() => setActiveTab('watching')}
-              className={`nav-segment-btn ${activeTab === 'watching' ? 'active-watching' : ''}`}
+              onClick={() => setActiveTab('watchlist')}
+              className={`nav-segment-btn ${activeTab === 'watchlist' ? 'active-watching' : ''}`}
+              style={{
+                background: activeTab === 'watchlist' ? 'rgba(249, 115, 22, 0.12)' : 'transparent',
+                color: activeTab === 'watchlist' ? '#f97316' : 'var(--text-secondary)'
+              }}
             >
-              📺 En cours
+              🍿 Watchlist
             </button>
             <button 
               onClick={() => setActiveTab('watched')}
@@ -597,11 +611,18 @@ export default function Home() {
         ) : activeTab === 'explore' ? (
           // Section d'exploration par genre et réalisateur
           <ExploreSection onItemAdded={() => fetchItems(false)} />
+        ) : activeTab === 'watchlist' ? (
+          // Section Watchlist dédiée (À regarder et En cours)
+          <WatchlistSection 
+            items={items}
+            onUpdateItem={handleUpdateItem}
+            onDeleteItem={handleDeleteItem}
+          />
         ) : (
           // Grille des étagères de la bibliothèque
           <ShelfSection 
             items={items} 
-            activeTab={activeTab} 
+            activeTab={activeTab as 'all' | 'watched' | 'dvd_owned' | 'dvd_wishlist'} 
             onUpdate={handleUpdateItem} 
             onDelete={handleDeleteItem} 
           />

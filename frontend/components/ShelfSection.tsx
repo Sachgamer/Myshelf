@@ -5,7 +5,7 @@ import MediaCard from './MediaCard';
 
 interface ShelfSectionProps {
   items: MediaItem[];
-  activeTab: 'all' | 'watching' | 'watched' | 'dvd_owned' | 'dvd_wishlist';
+  activeTab: 'all' | 'watched' | 'dvd_owned' | 'dvd_wishlist';
   onUpdate: (id: number, data: Partial<MediaItem>) => void;
   onDelete: (id: number) => void;
   readOnly?: boolean;
@@ -143,8 +143,7 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
       const q = searchQuery.toLowerCase();
       const matches = items.filter(item => 
         item.title.toLowerCase().includes(q) &&
-        (activeTab === 'all' || 
-         (activeTab === 'watching' && item.watching) ||
+        (activeTab === 'all' ? (item.watched || item.dvd_owned || item.dvd_wishlist) :
          (activeTab === 'watched' && item.watched) ||
          (activeTab === 'dvd_owned' && item.dvd_owned) ||
          (activeTab === 'dvd_wishlist' && item.dvd_wishlist))
@@ -174,11 +173,11 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
 
   // Filtrer les éléments selon l'onglet actif
   let filteredItems = items.filter(item => {
-    if (activeTab === 'watching') return item.watching;
     if (activeTab === 'watched') return item.watched;
     if (activeTab === 'dvd_owned') return item.dvd_owned;
     if (activeTab === 'dvd_wishlist') return item.dvd_wishlist;
-    return true; // toutes les catégories
+    // activeTab === 'all' (only library items)
+    return item.watched || item.dvd_owned || item.dvd_wishlist;
   });
 
   // Appliquer le filtre de recherche par titre ou synopsis
@@ -226,12 +225,10 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
 
   const getEmptyMessage = () => {
     switch(activeTab) {
-      case 'watching':
-        return "Aucune série n'est en cours de visionnage. Recherchez des séries et cliquez sur 'Suivre la série' pour commencer à suivre votre progression !";
       case 'watched':
         return "Vous n'avez pas encore noté de films ou séries. Allez dans l'onglet 'Rechercher' pour marquer vos premiers titres comme vus !";
       case 'dvd_owned':
-        return "Votre collection de DVD physiques est vide. Ajoutez des DVD possédés depuis vos titres ou faites une recherche.";
+        return "Votre collection de DVD physiques is vide. Ajoutez des DVD possédés depuis vos titres ou faites une recherche.";
       case 'dvd_wishlist':
         return "Votre liste de souhaits de DVD est vide. Ajoutez des titres que vous prévoyez d'acheter !";
       default:
@@ -377,7 +374,6 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
           gap: '10px' 
         }}>
           {activeTab === 'all' && '📚 Toute ma bibliothèque'}
-          {activeTab === 'watching' && '📺 Mes séries en cours'}
           {activeTab === 'watched' && '👁️ Mes films & séries vus'}
           {activeTab === 'dvd_owned' && '📀 Mes DVD achetés'}
           {activeTab === 'dvd_wishlist' && '💖 Mes souhaits d\'achats DVD'}

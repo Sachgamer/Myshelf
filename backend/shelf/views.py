@@ -400,11 +400,18 @@ class MediaItemViewSet(viewsets.ModelViewSet):
             if category == 'watched':
                 item.watched = True
                 item.watching = False
+                item.watchlist = False
                 if rating is not None:
                     item.rating = int(rating)
             elif category == 'watching':
                 item.watching = True
                 item.watched = False
+                item.watchlist = False
+                item.rating = None
+            elif category == 'watchlist':
+                item.watchlist = True
+                item.watched = False
+                item.watching = False
                 item.rating = None
             elif category == 'dvd_owned':
                 item.dvd_owned = True
@@ -485,6 +492,8 @@ class MediaItemViewSet(viewsets.ModelViewSet):
                     item.rating = int(rating)
             elif category == 'watching':
                 item.watching = True
+            elif category == 'watchlist':
+                item.watchlist = True
             elif category == 'dvd_owned':
                 item.dvd_owned = True
             elif category == 'dvd_wishlist':

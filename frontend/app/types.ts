@@ -16,6 +16,7 @@ export interface MediaItem {
   rating: number | null;
   dvd_owned: boolean;
   dvd_wishlist: boolean;
+  watchlist: boolean;
   user: number | null;
   created_at: string;
   updated_at: string;
