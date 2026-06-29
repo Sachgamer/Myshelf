@@ -454,12 +454,6 @@ export default function Home() {
               🍿 Watchlist
             </button>
             <button 
-              onClick={() => setActiveTab('watched')}
-              className={`nav-segment-btn ${activeTab === 'watched' ? 'active-watched' : ''}`}
-            >
-              👁️ Vus & Notés
-            </button>
-            <button 
               onClick={() => setActiveTab('dvd_owned')}
               className={`nav-segment-btn ${activeTab === 'dvd_owned' ? 'active-dvd_owned' : ''}`}
             >
