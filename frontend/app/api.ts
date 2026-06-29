@@ -301,15 +301,32 @@ export async function discoverMedia(mediaType: 'movie' | 'tv', genreId: number, 
   }
 }
 
-export async function discoverByDirector(name: string, page = 1, role: 'crew' | 'cast' = 'crew'): Promise<SearchResult[]> {
+export async function discoverByDirector(name: string, page = 1, role: 'crew' | 'cast' = 'crew', directorId?: number): Promise<SearchResult[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/explore/?type=director&director_name=${encodeURIComponent(name)}&page=${page}&role=${role}`, {
+    let url = `${API_BASE_URL}/explore/?type=director&director_name=${encodeURIComponent(name)}&page=${page}&role=${role}`;
+    if (directorId) {
+      url += `&director_id=${directorId}`;
+    }
+    const res = await fetch(url, {
       headers: getHeaders(false)
     });
     if (!res.ok) throw new Error("Erreur de découverte par artiste");
     return await res.json();
   } catch (error) {
     console.error("API Error discoverByDirector:", error);
+    return [];
+  }
+}
+
+export async function searchPeople(query: string): Promise<Array<{ id: number; name: string; profile_path: string | null; known_for_department: string }>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/explore/?type=search_person&query=${encodeURIComponent(query)}`, {
+      headers: getHeaders(false)
+    });
+    if (!res.ok) throw new Error("Erreur de recherche d'artistes");
+    return await res.json();
+  } catch (error) {
+    console.error("API Error searchPeople:", error);
     return [];
   }
 }

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { SearchResult, MediaItem } from '../app/types';
-import { getExploreGenres, discoverMedia, discoverByDirector, addItem, getItems } from '../app/api';
+import { getExploreGenres, discoverMedia, discoverByDirector, searchPeople, addItem, getItems } from '../app/api';
 
 interface ExploreSectionProps {
   onItemAdded: () => void;
 }
 
-// Popular directors list with their TMDB crew ID or exact name
+// Popular directors list
 const FAMOUS_DIRECTORS = [
   { name: 'Christopher Nolan', id: 525, icon: '🛸' },
   { name: 'Quentin Tarantino', id: 138, icon: '🩸' },
@@ -16,7 +16,7 @@ const FAMOUS_DIRECTORS = [
   { name: 'Hayao Miyazaki', id: 608, icon: '🧸' }
 ];
 
-// Popular actors list with their TMDB cast ID or exact name
+// Popular actors list
 const FAMOUS_ACTORS = [
   { name: 'Leonardo DiCaprio', id: 6193, icon: '❄️' },
   { name: 'Brad Pitt', id: 287, icon: '🕶️' },
@@ -27,7 +27,6 @@ const FAMOUS_ACTORS = [
 ];
 
 export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
-  // Main tabs: 'genre' or 'director' (acting as 'artist' now)
   const [activeTab, setActiveTab] = useState<'genre' | 'director'>('genre');
   
   // State for Genres Exploration
@@ -38,6 +37,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
   // State for Artist Exploration
   const [directorQuery, setDirectorQuery] = useState('');
   const [artistRole, setArtistRole] = useState<'crew' | 'cast'>('crew');
+  const [suggestedArtists, setSuggestedArtists] = useState<Array<{ id: number; name: string; known_for_department: string }>>([]);
+  const [selectedArtist, setSelectedArtist] = useState<{ id: number; name: string } | null>(null);
   
   // Results & Loading
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -45,7 +46,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Library cache for ownership status badges
+  // Library cache
   const [libraryItems, setLibraryItems] = useState<MediaItem[]>([]);
   
   // UI states for cards
@@ -53,7 +54,6 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
   const [addingId, setAddingId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Fetch user library
   const fetchLibrary = async () => {
     const items = await getItems();
     setLibraryItems(items);
@@ -81,6 +81,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
       loadGenres();
     } else {
       setResults([]);
+      setSuggestedArtists([]);
+      setSelectedArtist(null);
       setPage(1);
     }
   }, [activeTab, mediaType]);
@@ -100,38 +102,76 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     }
   }, [selectedGenreId, page, mediaType, activeTab]);
 
-  // Handle artist search submit
-  const handleDirectorSearch = async (
-    e?: React.FormEvent, 
-    searchName: string = directorQuery, 
-    searchPage: number = 1,
-    role: 'crew' | 'cast' = artistRole
-  ) => {
+  // Handle artist search submit (First searches for person matches)
+  const handleDirectorSearch = async (e?: React.FormEvent, queryText: string = directorQuery) => {
     if (e) e.preventDefault();
-    if (!searchName.trim()) return;
+    if (!queryText.trim()) return;
 
     setLoading(true);
-    setPage(searchPage);
+    setResults([]);
+    setSelectedArtist(null);
+    setPage(1);
+    
+    // Search for people first to resolve spelling/fuzzy matching
+    const people = await searchPeople(queryText);
+    setSuggestedArtists(people);
+
+    if (people.length > 0) {
+      // Auto-load first match
+      const firstArtist = people[0];
+      setSelectedArtist({ id: firstArtist.id, name: firstArtist.name });
+      const data = await discoverByDirector(firstArtist.name, 1, artistRole, firstArtist.id);
+      setResults(data);
+      setHasMore(data.length >= 4);
+    } else {
+      setSuggestedArtists([]);
+      setResults([]);
+    }
+    setLoading(false);
+  };
+
+  // Quick select an artist (from pre-selected cult lists)
+  const handleArtistSelect = async (name: string, id: number, role: 'crew' | 'cast') => {
+    setDirectorQuery(name);
+    setArtistRole(role);
+    setLoading(true);
+    setPage(1);
+    setSelectedArtist({ id, name });
+    setSuggestedArtists([]);
+    
     await fetchLibrary();
-    const data = await discoverByDirector(searchName, searchPage, role);
+    const data = await discoverByDirector(name, 1, role, id);
     setResults(data);
     setHasMore(data.length >= 4);
     setLoading(false);
   };
 
-  // Quick select an artist
-  const handleArtistSelect = (name: string, role: 'crew' | 'cast') => {
-    setDirectorQuery(name);
-    setArtistRole(role);
-    handleDirectorSearch(undefined, name, 1, role);
+  // Select a suggested artist from fuzzy matches list
+  const handleSelectSuggestedArtist = async (artist: { id: number; name: string }) => {
+    setSelectedArtist(artist);
+    setLoading(true);
+    setPage(1);
+    await fetchLibrary();
+    const data = await discoverByDirector(artist.name, 1, artistRole, artist.id);
+    setResults(data);
+    setHasMore(data.length >= 4);
+    setLoading(false);
   };
 
   // Change page
   const handlePageChange = (newPage: number) => {
     if (newPage < 1) return;
     setPage(newPage);
-    if (activeTab === 'director') {
-      handleDirectorSearch(undefined, directorQuery, newPage, artistRole);
+    if (activeTab === 'director' && selectedArtist) {
+      const loadPageData = async () => {
+        setLoading(true);
+        await fetchLibrary();
+        const data = await discoverByDirector(selectedArtist.name, newPage, artistRole, selectedArtist.id);
+        setResults(data);
+        setHasMore(data.length >= 4);
+        setLoading(false);
+      };
+      loadPageData();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -170,7 +210,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
     if (lower.includes('drame')) return '🎭';
     if (lower.includes('famille')) return '🏡';
     if (lower.includes('fantastique') || lower.includes('fantasy')) return '🦄';
-    if (lower.includes(' histoire')) return '🏺';
+    if (lower.includes('histoire')) return '🏺';
     if (lower.includes('horreur')) return '👻';
     if (lower.includes('musique')) return '🎵';
     if (lower.includes('mystère')) return '🔍';
@@ -343,6 +383,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               onClick={() => {
                 setArtistRole('crew');
                 setResults([]);
+                setSuggestedArtists([]);
+                setSelectedArtist(null);
                 setPage(1);
               }}
               style={{
@@ -362,6 +404,8 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               onClick={() => {
                 setArtistRole('cast');
                 setResults([]);
+                setSuggestedArtists([]);
+                setSelectedArtist(null);
                 setPage(1);
               }}
               style={{
@@ -380,7 +424,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
           </div>
 
           {/* Artist search form */}
-          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery, 1, artistRole)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto' }}>
+          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto' }}>
             <input
               type="text"
               placeholder={artistRole === 'crew' ? "Rechercher un réalisateur (ex: Christopher Nolan...)" : "Rechercher un acteur (ex: Leonardo DiCaprio...)"}
@@ -401,7 +445,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               FAMOUS_DIRECTORS.map((director) => (
                 <button
                   key={director.id}
-                  onClick={() => handleArtistSelect(director.name, 'crew')}
+                  onClick={() => handleArtistSelect(director.name, director.id, 'crew')}
                   style={{
                     padding: '0.35rem 0.8rem',
                     borderRadius: '20px',
@@ -426,7 +470,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               FAMOUS_ACTORS.map((actor) => (
                 <button
                   key={actor.id}
-                  onClick={() => handleArtistSelect(actor.name, 'cast')}
+                  onClick={() => handleArtistSelect(actor.name, actor.id, 'cast')}
                   style={{
                     padding: '0.35rem 0.8rem',
                     borderRadius: '20px',
@@ -449,6 +493,50 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
               ))
             )}
           </div>
+
+          {/* FUZZY MATCHES / DID YOU MEAN BOX */}
+          {suggestedArtists.length > 0 && (
+            <div className="glass-panel" style={{
+              padding: '1.25rem',
+              maxWidth: '600px',
+              width: '100%',
+              margin: '0.5rem auto 0',
+              border: '1px dashed var(--primary)',
+              borderRadius: '16px',
+              textAlign: 'center',
+              boxShadow: '0 0 15px rgba(139, 92, 246, 0.15)'
+            }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-hover)', display: 'block', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                🤔 Voulez-vous dire ?
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                {suggestedArtists.slice(0, 5).map((artist) => {
+                  const isSelected = selectedArtist?.id === artist.id;
+                  const deptInfo = artist.known_for_department === 'Directing' ? 'Réal.' : 'Acteur';
+                  return (
+                    <button
+                      key={artist.id}
+                      onClick={() => handleSelectSuggestedArtist({ id: artist.id, name: artist.name })}
+                      style={{
+                        padding: '0.4rem 0.85rem',
+                        borderRadius: '12px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                        border: isSelected ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        transition: 'all 0.2s ease'
+                      }}
+                      className="suggested-artist-btn"
+                    >
+                      👤 {artist.name} <span style={{ opacity: 0.6, fontSize: '0.72rem', fontWeight: 500 }}>({deptInfo})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -485,6 +573,15 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
       {/* Results grid */}
       {!loading && results.length > 0 && (
         <>
+          {/* Matched artist title banner */}
+          {activeTab === 'director' && selectedArtist && (
+            <div style={{ margin: '0 0 1.5rem 0.25rem', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '1.15rem', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🎬 Résultats pour : <span style={{ color: 'var(--primary-hover)', background: 'rgba(139, 92, 246, 0.1)', padding: '0.25rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>{selectedArtist.name}</span>
+              </h3>
+            </div>
+          )}
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',

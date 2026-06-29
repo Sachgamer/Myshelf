@@ -730,6 +730,48 @@ class TMDBExploreView(APIView):
             ]
             return Response({"genres": mock_genres})
 
+        # 1.5 Search person (actor / crew) with fuzzy matching suggestions
+        elif explore_type == 'search_person':
+            query = request.query_params.get('query', '').strip()
+            if not query:
+                return Response({"error": "Le paramètre query est obligatoire pour le type 'search_person'."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            if api_configured:
+                search_data = query_tmdb('search/person', {'query': query, 'language': 'fr-FR'})
+                if search_data and 'results' in search_data:
+                    formatted_results = []
+                    for item in search_data['results']:
+                        formatted_results.append({
+                            "id": item.get('id'),
+                            "name": item.get('name'),
+                            "profile_path": item.get('profile_path'),
+                            "known_for_department": item.get('known_for_department', '')
+                        })
+                    return Response(formatted_results)
+                    
+            # Mock fallback for person search
+            query_lower = query.lower()
+            mock_people = [
+                {"id": 525, "name": "Christopher Nolan", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 138, "name": "Quentin Tarantino", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 1032, "name": "Martin Scorsese", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 488, "name": "Steven Spielberg", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 13742, "name": "Denis Villeneuve", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 608, "name": "Hayao Miyazaki", "profile_path": None, "known_for_department": "Directing"},
+                {"id": 6193, "name": "Leonardo DiCaprio", "profile_path": None, "known_for_department": "Acting"},
+                {"id": 287, "name": "Brad Pitt", "profile_path": None, "known_for_department": "Acting"},
+                {"id": 85, "name": "Johnny Depp", "profile_path": None, "known_for_department": "Acting"},
+                {"id": 1245, "name": "Scarlett Johansson", "profile_path": None, "known_for_department": "Acting"},
+                {"id": 234352, "name": "Margot Robbie", "profile_path": None, "known_for_department": "Acting"},
+                {"id": 3896, "name": "Christian Bale", "profile_path": None, "known_for_department": "Acting"}
+            ]
+            matches = []
+            for p in mock_people:
+                name_parts = p["name"].lower().split()
+                if any(query_lower in part or part in query_lower for part in name_parts) or query_lower in p["name"].lower():
+                    matches.append(p)
+            return Response(matches)
+
         # 2. Discover by genre ID
         elif explore_type == 'discover':
             genre_id = request.query_params.get('genre_id')
