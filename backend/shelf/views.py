@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle
 
 from .models import MediaItem, UserProfile
 from .serializers import MediaItemSerializer
@@ -167,8 +168,13 @@ class TMDBSearchView(APIView):
         return Response(mock_results)
 
 
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login'
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         username = request.data.get('username')
@@ -211,6 +217,7 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         username = request.data.get('username')
