@@ -6,7 +6,7 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
     // Si on utilise le serveur de dev sur le port 3000 standard de Next.js, on vise localhost
     if (window.location.port === '3000') {
-      return 'http://localhost:8000/api';
+      return `http://${window.location.hostname}:8000/api`;
     }
 
     // Si on est sur l'émulateur Android (via Capacitor), l'hôte 10.0.2.2 permet d'accéder au localhost de la machine de dev.
