@@ -641,31 +641,16 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
 
         {/* Ligne d'actions rapides */}
         {!readOnly && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            paddingTop: '0.75rem',
-            marginTop: '0.25rem'
-          }}>
+          <div className="card-actions-row">
             {/* Boutons d'activation de statuts */}
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div className="card-status-btns">
               {/* Icône de visionnage (Vu / Noter) */}
               <button
                 onClick={toggleWatched}
+                className="card-action-btn"
                 style={{
-                  background: item.watched ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: item.watched ? '#fff' : 'var(--text-secondary)'
+                  background: item.watched ? 'var(--primary)' : undefined,
+                  color: item.watched ? '#fff' : undefined
                 }}
                 title={item.watched ? "Marquer comme non vu" : "Marquer comme vu et noter"}
               >
@@ -676,18 +661,10 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
               {item.media_type === 'tv' && (
                 <button
                   onClick={toggleWatching}
+                  className="card-action-btn"
                   style={{
-                    background: item.watching ? '#3b82f6' : 'rgba(255,255,255,0.05)',
-                    border: 'none',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    color: item.watching ? '#fff' : 'var(--text-secondary)'
+                    background: item.watching ? '#3b82f6' : undefined,
+                    color: item.watching ? '#fff' : undefined
                   }}
                   title={item.watching ? "Arrêter de suivre cette série" : "Suivre la série en cours de visionnage"}
                 >
@@ -698,18 +675,10 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
               {/* Watchlist toggle button */}
               <button
                 onClick={toggleWatchlist}
+                className="card-action-btn"
                 style={{
-                  background: item.watchlist ? '#f97316' : 'rgba(255,255,255,0.05)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: item.watchlist ? '#fff' : 'var(--text-secondary)'
+                  background: item.watchlist ? '#f97316' : undefined,
+                  color: item.watchlist ? '#fff' : undefined
                 }}
                 title={item.watchlist ? "Retirer de la watchlist" : "Ajouter à la watchlist"}
               >
@@ -719,18 +688,10 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
               {/* DVD possédé */}
               <button
                 onClick={toggleDvdOwned}
+                className="card-action-btn"
                 style={{
-                  background: item.dvd_owned ? 'var(--dvd-color)' : 'rgba(255,255,255,0.05)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: item.dvd_owned ? '#fff' : 'var(--text-secondary)'
+                  background: item.dvd_owned ? 'var(--dvd-color)' : undefined,
+                  color: item.dvd_owned ? '#fff' : undefined
                 }}
                 title={item.dvd_owned ? "Retirer des DVD possédés" : "Ajouter aux DVD possédés"}
               >
@@ -740,18 +701,10 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
               {/* Liste de souhaits de DVD */}
               <button
                 onClick={toggleDvdWishlist}
+                className="card-action-btn"
                 style={{
-                  background: item.dvd_wishlist ? 'var(--wishlist-color)' : 'rgba(255,255,255,0.05)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: item.dvd_wishlist ? '#fff' : 'var(--text-secondary)'
+                  background: item.dvd_wishlist ? 'var(--wishlist-color)' : undefined,
+                  color: item.dvd_wishlist ? '#fff' : undefined
                 }}
                 title={item.dvd_wishlist ? "Retirer de la liste d'achats DVD" : "Ajouter à la liste d'achats DVD"}
               >
@@ -767,22 +720,10 @@ export default function MediaCard({ item, onUpdate, onDelete, readOnly = false }
                 }
               }}
               style={{
-                background: 'transparent',
-                border: 'none',
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                transition: 'all 0.2s',
+                background: 'transparent'
               }}
-              className="delete-btn"
+              className="card-action-btn delete-btn"
               title="Retirer complètement de MyShelf"
-              onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
             >
               🗑️
             </button>

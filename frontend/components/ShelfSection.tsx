@@ -569,11 +569,7 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
           </div>
         ) : (
           <>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-              gap: '24px'
-            }}>
+            <div className="media-grid">
               {paginatedItems.map(item => (
                 <MediaCard 
                   key={item.id} 
@@ -705,7 +701,7 @@ export default function ShelfSection({ items, activeTab, onUpdate, onDelete, rea
               ) : (
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                   gap: '24px'
                 }}>
                   

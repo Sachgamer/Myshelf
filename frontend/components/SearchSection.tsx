@@ -112,7 +112,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
     <div className="animate-fade-in" style={{ padding: '1rem 0' }}>
       
       {/* Barre de saisie de recherche */}
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', maxWidth: '600px', margin: '0 auto 2.5rem', position: 'relative' }}>
+      <form onSubmit={handleSearch} className="search-form" style={{ display: 'flex', gap: '10px', maxWidth: '600px', margin: '0 auto 2.5rem', position: 'relative' }}>
         <div style={{ position: 'relative', flexGrow: 1 }}>
           <input 
             type="text" 
@@ -204,11 +204,7 @@ export default function SearchSection({ onItemAdded }: SearchSectionProps) {
 
       {/* Grille d'affichage des résultats de recherche */}
       {!loading && results.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '24px'
-        }}>
+        <div className="media-grid">
           {results.map((media) => {
             const libraryItem = getLibraryStatus(media.tmdb_id, media.media_type);
             const releaseYear = media.release_date ? new Date(media.release_date).getFullYear() : 'N/A';

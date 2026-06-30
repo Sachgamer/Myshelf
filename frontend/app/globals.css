@@ -183,6 +183,14 @@ h1, h2, h3, h4, h5, h6 {
   gap: 2px;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar IE/Edge */
+}
+
+.nav-segmented-control::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .nav-segment-btn {
@@ -198,6 +206,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .nav-segment-btn:hover {
@@ -360,4 +369,167 @@ h1, h2, h3, h4, h5, h6 {
   background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
   z-index: 0;
   pointer-events: none;
+}
+
+/* Media Card Grid System */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+/* Card actions classes */
+.card-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-status-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+
+.card-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* Responsive Header */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* Media query definitions */
+
+@media (max-width: 990px) {
+  .header-container {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .header-logo {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .header-profile {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .nav-segmented-control {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .hero-banner {
+    padding: 1.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 16px;
+  }
+  
+  .hero-banner h2 {
+    font-size: 1.6rem !important;
+  }
+  
+  .media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .card-action-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+  
+  .card-actions-row {
+    padding-top: 0.5rem;
+    gap: 4px;
+  }
+  
+  .card-status-btns {
+    gap: 4px;
+  }
+  
+  /* Stacking forms on mobile */
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    justify-items: center;
+    gap: 12px;
+  }
+  
+  .header-logo {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .header-profile {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    justify-content: center;
+  }
+  
+  .nav-segmented-control {
+    grid-column: 1;
+    grid-row: 3;
+  }
 }

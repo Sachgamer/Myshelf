@@ -221,11 +221,7 @@ export default function WatchlistSection({ items, onUpdateItem, onDeleteItem }: 
       {/* Grid of cards */}
       {paginatedItems.length > 0 ? (
         <>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="media-grid">
             {paginatedItems.map((item) => (
               <div key={item.id}>
                 <MediaCard 

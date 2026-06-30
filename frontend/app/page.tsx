@@ -409,18 +409,12 @@ export default function Home() {
         padding: '0.85rem 0',
         transition: 'var(--transition-smooth)'
       }}>
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <div className="container header-container">
           
           {/* Logo cinématique */}
           <div 
             onClick={() => setActiveTab('all')}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '12px', 
-              cursor: 'pointer',
-              userSelect: 'none'
-            }}
+            className="header-logo"
           >
             <span style={{ fontSize: '1.85rem', filter: 'drop-shadow(0 0 12px rgba(139, 92, 246, 0.6))' }}>🎬</span>
             <h1 style={{ 
@@ -501,7 +495,7 @@ export default function Home() {
           </nav>
 
           {/* Profil utilisateur & Déconnexion */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+          <div className="header-profile">
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               👤 <strong style={{ color: '#fff' }}>{user.username}</strong>
             </span>

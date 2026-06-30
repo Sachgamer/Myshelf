@@ -124,11 +124,7 @@ export default function DiscoverySection({ onItemAdded }: DiscoverySectionProps)
       {/* Recommendations grid */}
       {!loading && recommendations.length > 0 && (
         <>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="media-grid">
             {recommendations.map((media) => {
               const libraryItem = getLibraryStatus(media.tmdb_id, media.media_type);
               const releaseYear = media.release_date ? new Date(media.release_date).getFullYear() : 'N/A';

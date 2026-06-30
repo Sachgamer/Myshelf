@@ -470,7 +470,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
           </div>
 
           {/* Artist search form with drop-down autocomplete */}
-          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery)} style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto', position: 'relative' }}>
+          <form onSubmit={(e) => handleDirectorSearch(e, directorQuery)} className="search-form" style={{ display: 'flex', gap: '10px', maxWidth: '600px', width: '100%', margin: '0.5rem auto', position: 'relative' }}>
             <div style={{ position: 'relative', flexGrow: 1 }}>
               <input
                 type="text"
@@ -686,11 +686,7 @@ export default function ExploreSection({ onItemAdded }: ExploreSectionProps) {
             </div>
           )}
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="media-grid">
             {results.map((media) => {
               const itemMediaType = media.media_type || (activeTab === 'genre' ? mediaType : 'movie');
               const libraryItem = getLibraryStatus(media.tmdb_id, itemMediaType);
